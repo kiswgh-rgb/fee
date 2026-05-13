@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FFFFFF">
+<title>Fee — 일일 습관 트래커 v9.4</title>
+<style>
+  :root {
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F7F6F2;
+    --bg-tertiary: #F1EFE8;
+    --text-primary: #1A1A1A;
+    --text-secondary: #5F5E5A;
+    --text-tertiary: #888780;
+    --border: rgba(0,0,0,0.12);
+    --accent: #185FA5;
+    --accent-dark: #0C447C;
+    --accent-bg: #E6F1FB;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", "Noto Sans KR", "Helvetica Neue", sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  }
+  .container {
+    max-width: 380px;
+    margin: 0 auto;
+    padding: 16px 16px 32px;
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .date-label { font-size: 16px; font-weight: 500; color: var(--text-primary); }
+  .date-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .check-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .cell {
+    min-height: 88px;
+    padding: 12px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+    transition: background 0.2s, border-color 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .cell.checked { background: var(--accent-bg); border-color: var(--accent); }
+  .cell-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: center;
+  }
+  .cell.checked .cell-name { color: var(--accent-dark); }
+  .cell-weight {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+  .cell.checked .cell-weight { color: var(--accent); }
+  .summary {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-secondary);
+  }
+  .summary .total-val {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .bucket-num { font-size: 13px; font-weight: 400; color: var(--text-secondary); margin-left: 2px; }
+  .calendar {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+  }
+  .cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .cal-nav {
+    width: 32px; height: 32px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    font-size: 18px;
+    font-family: inherit;
+  }
+  .cal-nav:disabled { opacity: 0.3; cursor: default; }
+  .cal-nav:not(:disabled):active { background: var(--bg-tertiary); }
+  .cal-title { font-size: 13px; font-weight: 500; }
+  .cal-weekdays, .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .cal-weekdays { margin-bottom: 4px; }
+  .cal-weekday {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    padding: 2px 0;
+  }
+  .cal-cell {
+    aspect-ratio: 1;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 0.5px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: pointer;
+  }
+  .cal-cell.disabled { opacity: 0.35; pointer-events: none; }
+  .cal-cell.selected { outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
+  .cal-cell.today:not(.selected) { outline: 1px dashed var(--text-secondary); outline-offset: -1px; }
+  .cal-cell.blank { background: transparent; border: none; pointer-events: none; }
+  .footnote {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+  .loading {
+    text-align: center;
+    padding: 32px 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="loading" class="loading">불러오는 중...</div>
+  <div id="app" class="hidden">
+    <div class="header">
+      <div id="date-label" class="date-label">—</div>
+      <div id="date-sub" class="date-sub">—</div>
+    </div>
+
+    <div id="check-grid" class="check-grid"></div>
+
+    <div class="summary">
+      <div>오늘 <span id="today-liter">0.00</span>L</div>
+      <div>누적 <strong class="total-val"><span id="bucket-current">0.00</span></strong> / <span id="bucket-goal">1000</span>L<span id="bucket-num" class="bucket-num"></span></div>
+    </div>
+
+    <div class="calendar">
+      <div class="cal-header">
+        <button id="cal-prev" type="button" class="cal-nav" aria-label="이전 달">‹</button>
+        <div id="cal-title" class="cal-title">—</div>
+        <button id="cal-next" type="button" class="cal-nav" aria-label="다음 달">›</button>
+      </div>
+      <div id="cal-weekdays" class="cal-weekdays"></div>
+      <div id="cal-grid" class="cal-grid"></div>
+    </div>
+
+    <div id="footnote" class="footnote">탭하여 체크/해제 · 시작일 2026.05.10</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const STORAGE_PREFIX = 'fee_v9_';
+  const CONFIG_VERSION = 'v9';
+  const START_DATE = new Date(2026, 4, 10);
+  START_DATE.setHours(0,0,0,0);
+  const EPSILON = 0.001;
+
+  const DEFAULT_CONFIG = {
+    version: CONFIG_VERSION,
+    items: [
+      { name: '아침공부', weight: 30 },
+      { name: '점심공부', weight: 10 },
+      { name: '저녁공부', weight: 30 },
+      { name: '케틀벨',   weight: 30 }
+    ],
+    daily_total: 1.0,
+    bucket_goal: 1000
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2,'0');
+  const dateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const sameDay = (a,b) => a.getTime() === b.getTime();
+  const isToday = (d) => { const t=new Date(); t.setHours(0,0,0,0); return sameDay(d,t); };
+  const weekdayKo = (d) => ['일','월','화','수','목','금','토'][d.getDay()];
+  const haptic = () => { try { if(navigator.vibrate) navigator.vibrate(15); } catch(e){} };
+
+  function getKey(k){
+    try { const v = localStorage.getItem(STORAGE_PREFIX + k); return v ? JSON.parse(v) : null; }
+    catch(e){ return null; }
+  }
+  function setKey(k, v){
+    try { localStorage.setItem(STORAGE_PREFIX + k, JSON.stringify(v)); return true; }
+    catch(e){ return false; }
+  }
+  function delKey(k){ try { localStorage.removeItem(STORAGE_PREFIX + k); } catch(e){} }
+  function listKeys(prefix){
+    const out = [];
+    try {
+      for(let i=0; i<localStorage.length; i++){
+        const k = localStorage.key(i);
+        if(k && k.indexOf(STORAGE_PREFIX + prefix) === 0){
+          out.push(k.slice(STORAGE_PREFIX.length));
+        }
+      }
+    } catch(e){}
+    return out;
+  }
+
+  let config = null;
+  let currentDay = null;
+  let totalLiter = 0;
+  let viewDate = new Date(); viewDate.setHours(0,0,0,0);
+  if(viewDate.getTime() < START_DATE.getTime()) viewDate = new Date(START_DATE);
+  let calMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+
+  function loadConfig(){
+    let c = getKey('config');
+    let migrated = false;
+    if(!c || c.version !== CONFIG_VERSION){
+      listKeys('day:').forEach(delKey);
+      delKey('total_liter');
+      c = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+      setKey('config', c);
+      migrated = true;
+    }
+    const tw = c.items.reduce((s,i)=> s + i.weight, 0);
+    c.items.forEach(it => { it.liter = (it.weight / tw) * c.daily_total; });
+    return { config: c, migrated };
+  }
+
+  function initTotalLiter(){
+    const s = getKey('total_liter');
+    if(typeof s === 'number'){ totalLiter = s; return; }
+    let sum = 0;
+    listKeys('day:').forEach(k => {
+      const day = getKey(k);
+      if(!day || !day.checks) return;
+      day.checks.forEach((c, i) => {
+        if(c && config.items[i]) sum += config.items[i].liter;
+      });
+    });
+    totalLiter = sum;
+    setKey('total_liter', totalLiter);
+  }
+
+  function bucketState(){
+    const bn = Math.floor(totalLiter / config.bucket_goal) + 1;
+    const cb = totalLiter - (bn - 1) * config.bucket_goal;
+    return { bucketNum: bn, currentInBucket: cb };
+  }
+
+  function loadDay(d){
+    let day = getKey('day:' + dateKey(d));
+    if(!day) day = { checks: config.items.map(()=>false) };
+    while(day.checks.length < config.items.length) day.checks.push(false);
+    day.checks.length = config.items.length;
+    return day;
+  }
+  function saveDay(d, day){ setKey('day:' + dateKey(d), day); }
+
+  function dayLiter(checks){
+    let s = 0;
+    checks.forEach((c, i) => { if(c && config.items[i]) s += config.items[i].liter; });
+    return s;
+  }
+
+  function renderDate(){
+    $('date-label').textContent = `${viewDate.getFullYear()}.${pad(viewDate.getMonth()+1)}.${pad(viewDate.getDate())}`;
+    $('date-sub').textContent = isToday(viewDate) ? `오늘 · ${weekdayKo(viewDate)}요일` : `${weekdayKo(viewDate)}요일`;
+  }
+
+  function buildCell(idx){
+    const it = config.items[idx];
+    const checked = currentDay.checks[idx];
+    const cell = document.createElement('div');
+    cell.className = 'cell' + (checked ? ' checked' : '');
+    cell.dataset.idx = idx;
+    cell.setAttribute('role', 'button');
+    cell.setAttribute('tabindex', '0');
+    cell.setAttribute('aria-pressed', checked ? 'true' : 'false');
+    cell.innerHTML =
+      '<div class="cell-name">' + it.name + '</div>' +
+      '<div class="cell-weight">' + it.weight + '%</div>';
+    attachTap(cell, idx);
+    return cell;
+  }
+
+  function attachTap(cell, idx){
+    let tStartX = 0, tStartY = 0, tTouched = false;
+    const TOL = 10;
+
+    function toggle(){
+      const nc = !currentDay.checks[idx];
+      currentDay.checks[idx] = nc;
+      const delta = config.items[idx].liter * (nc ? 1 : -1);
+      totalLiter = Math.max(0, totalLiter + delta);
+      cell.classList.toggle('checked', nc);
+      cell.setAttribute('aria-pressed', nc ? 'true' : 'false');
+      updateSummary();
+      paintCalCell(viewDate);
+      haptic();
+      saveDay(viewDate, currentDay);
+      setKey('total_liter', totalLiter);
+    }
+
+    cell.addEventListener('touchstart', (e) => {
+      if(e.touches && e.touches[0]){
+        tStartX = e.touches[0].clientX;
+        tStartY = e.touches[0].clientY;
+      }
+      tTouched = true;
+    }, { passive: true });
+
+    cell.addEventListener('touchend', (e) => {
+      if(!tTouched) return;
+      let moved = false;
+      if(e.changedTouches && e.changedTouches[0]){
+        const dx = e.changedTouches[0].clientX - tStartX;
+        const dy = e.changedTouches[0].clientY - tStartY;
+        if(Math.abs(dx) > TOL || Math.abs(dy) > TOL) moved = true;
+      }
+      if(!moved){
+        e.preventDefault();
+        toggle();
+      }
+      setTimeout(() => { tTouched = false; }, 400);
+    }, { passive: false });
+
+    cell.addEventListener('touchcancel', () => { tTouched = false; }, { passive: true });
+
+    cell.addEventListener('click', () => {
+      if(tTouched) return;
+      toggle();
+    });
+
+    cell.addEventListener('keydown', (e) => {
+      if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); toggle(); }
+    });
+  }
+
+  function updateSummary(){
+    $('today-liter').textContent = dayLiter(currentDay.checks).toFixed(2);
+    const bs = bucketState();
+    $('bucket-current').textContent = bs.currentInBucket.toFixed(2);
+    $('bucket-goal').textContent = String(config.bucket_goal);
+    $('bucket-num').textContent = bs.bucketNum > 1 ? ` (통 ${bs.bucketNum})` : '';
+  }
+
+  function renderChecks(){
+    currentDay = loadDay(viewDate);
+    const grid = $('check-grid');
+    grid.innerHTML = '';
+    config.items.forEach((_, i) => grid.appendChild(buildCell(i)));
+  }
+
+  // 4단계 흑백 농도 - EPSILON으로 부동소수점 경계 안전 처리
+  // 0% < r < 30%   → 1단계 옅은 회색
+  // 30% <= r < 60% → 2단계 회색
+  // 60% <= r < 90% → 3단계 짙은 회색
+  // 90% <= r       → 4단계 검정
+  function densityStyle(r){
+    if(r < EPSILON){
+      return { bg: null, fg: null, stage: 0 };
+    }
+    if(r < 0.30 - EPSILON){
+      return { bg: '#E8E8E8', fg: '#1A1A1A', stage: 1 };
+    }
+    if(r < 0.60 - EPSILON){
+      return { bg: '#B0B0B0', fg: '#1A1A1A', stage: 2 };
+    }
+    if(r < 0.90 - EPSILON){
+      return { bg: '#606060', fg: '#FFFFFF', stage: 3 };
+    }
+    return { bg: '#1A1A1A', fg: '#FFFFFF', stage: 4 };
+  }
+
+  function applyCellStyle(cell, r){
+    const s = densityStyle(r);
+    if(s.bg){
+      cell.style.background = s.bg;
+      cell.style.borderColor = 'transparent';
+      cell.style.color = s.fg;
+    } else {
+      cell.style.background = 'var(--bg-primary)';
+      cell.style.borderColor = 'var(--border)';
+      cell.style.color = 'var(--text-primary)';
+    }
+  }
+
+  function ratioFromKey(k){
+    const day = getKey('day:' + k);
+    const checks = day && day.checks ? day.checks : [];
+    let l = 0;
+    checks.forEach((c, i) => { if(c && config.items[i]) l += config.items[i].liter; });
+    return Math.min(1, l / config.daily_total);
+  }
+
+  function paintCalCell(d){
+    const k = dateKey(d);
+    const cell = document.querySelector('[data-cal-key="' + k + '"]');
+    if(!cell) return;
+    applyCellStyle(cell, ratioFromKey(k));
+  }
+
+  function renderCalendar(){
+    $('cal-title').textContent = `${calMonth.getFullYear()}.${pad(calMonth.getMonth()+1)}`;
+
+    const wd = $('cal-weekdays');
+    if(!wd.hasChildNodes()){
+      ['월','화','수','목','금','토','일'].forEach(w => {
+        const el = document.createElement('div');
+        el.className = 'cal-weekday';
+        el.textContent = w;
+        wd.appendChild(el);
+      });
+    }
+
+    const grid = $('cal-grid');
+    grid.innerHTML = '';
+    const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+    const last  = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0);
+    const firstWd = (first.getDay() + 6) % 7;
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    for(let i = 0; i < firstWd; i++){
+      const blank = document.createElement('div');
+      blank.className = 'cal-cell blank';
+      grid.appendChild(blank);
+    }
+
+    for(let day = 1; day <= last.getDate(); day++){
+      const d = new Date(calMonth.getFullYear(), calMonth.getMonth(), day);
+      const k = dateKey(d);
+      const before = d.getTime() < START_DATE.getTime();
+      const future = d.getTime() > today.getTime();
+      const isSel = sameDay(d, viewDate);
+      const isTod = sameDay(d, today);
+
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell' +
+        ((before||future) ? ' disabled' : '') +
+        (isSel ? ' selected' : '') +
+        (isTod && !isSel ? ' today' : '');
+      cell.dataset.calKey = k;
+      cell.textContent = String(day);
+
+      if(!before && !future){
+        let cTouched = false;
+        cell.addEventListener('touchend', (e) => {
+          cTouched = true;
+          e.preventDefault();
+          viewDate = new Date(d);
+          renderDate();
+          renderChecks();
+          updateSummary();
+          renderCalendar();
+          updateCalNav();
+        }, { passive: false });
+        cell.addEventListener('click', () => {
+          if(cTouched){ cTouched = false; return; }
+          viewDate = new Date(d);
+          renderDate();
+          renderChecks();
+          updateSummary();
+          renderCalendar();
+          updateCalNav();
+        });
+      }
+
+      grid.appendChild(cell);
+      applyCellStyle(cell, ratioFromKey(k));
+    }
+  }
+
+  function canPrev(){
+    const lastOfPrev = new Date(calMonth.getFullYear(), calMonth.getMonth(), 0);
+    return lastOfPrev.getTime() >= START_DATE.getTime();
+  }
+  function canNext(){
+    const today = new Date(); today.setHours(0,0,0,0);
+    const nextFirst = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 1);
+    return nextFirst.getTime() <= today.getTime();
+  }
+  function updateCalNav(){
+    $('cal-prev').disabled = !canPrev();
+    $('cal-next').disabled = !canNext();
+  }
+
+  $('cal-prev').addEventListener('click', () => {
+    if(!canPrev()) return;
+    calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()-1, 1);
+    renderCalendar();
+    updateCalNav();
+  });
+  $('cal-next').addEventListener('click', () => {
+    if(!canNext()) return;
+    calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 1);
+    renderCalendar();
+    updateCalNav();
+  });
+
+  try {
+    const cr = loadConfig();
+    config = cr.config;
+    if(cr.migrated){
+      $('footnote').textContent = '항목 변경 — 기존 데이터 초기화됨 · 시작일 2026.05.10';
+    }
+    initTotalLiter();
+    renderDate();
+    renderChecks();
+    updateSummary();
+    renderCalendar();
+    updateCalNav();
+    $('loading').classList.add('hidden');
+    $('app').classList.remove('hidden');
+  } catch(e){
+    $('loading').textContent = '오류: ' + (e && e.message ? e.message : '알 수 없음');
+  }
+})();
+</script>
+</body>
+</html>
