@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#FFFFFF">
-<title>Fee — 일일 습관 트래커 v9.4</title>
+<title>Fee — 일일 습관 트래커 v9.5</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -196,7 +196,7 @@
 
     <div class="summary">
       <div>오늘 <span id="today-liter">0.00</span>L</div>
-      <div>누적 <strong class="total-val"><span id="bucket-current">0.00</span></strong> / <span id="bucket-goal">1000</span>L<span id="bucket-num" class="bucket-num"></span></div>
+      <div>누적 <strong class="total-val"><span id="bucket-current">0.00</span></strong> / <span id="bucket-goal">365</span>L<span id="bucket-num" class="bucket-num"></span></div>
     </div>
 
     <div class="calendar">
@@ -209,7 +209,7 @@
       <div id="cal-grid" class="cal-grid"></div>
     </div>
 
-    <div id="footnote" class="footnote">탭하여 체크/해제 · 시작일 2026.05.10</div>
+    <div id="footnote" class="footnote">탭하여 체크/해제 · 시작일 2026.05.10 · 통 365L</div>
   </div>
 </div>
 
@@ -218,11 +218,12 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v9_';
-  const CONFIG_VERSION = 'v9';
+  const CONFIG_VERSION = 'v9.5';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
 
+  // chi_bootstrap_2026-05-13 확정 사항
   const DEFAULT_CONFIG = {
     version: CONFIG_VERSION,
     items: [
@@ -232,7 +233,8 @@
       { name: '케틀벨',   weight: 30 }
     ],
     daily_total: 1.0,
-    bucket_goal: 1000
+    bucket_goal: 365,
+    bootstrap_source: 'chi_bootstrap_2026-05-13'
   };
 
   const $ = (id) => document.getElementById(id);
@@ -265,26 +267,63 @@
     return out;
   }
 
+  // 항목 구조 동일성 검사 (이름+가중치 시퀀스)
+  function itemsSignature(items){
+    return items.map(i => `${i.name}:${i.weight}`).join('|');
+  }
+
   let config = null;
   let currentDay = null;
   let totalLiter = 0;
   let viewDate = new Date(); viewDate.setHours(0,0,0,0);
   if(viewDate.getTime() < START_DATE.getTime()) viewDate = new Date(START_DATE);
   let calMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  let migrationNote = null;
 
   function loadConfig(){
     let c = getKey('config');
-    let migrated = false;
-    if(!c || c.version !== CONFIG_VERSION){
+
+    // 신규 또는 항목 구조 변경 시: 전체 초기화
+    if(!c){
+      c = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+      setKey('config', c);
+      return { config: c, note: null };
+    }
+
+    const oldSig = c.items ? itemsSignature(c.items) : '';
+    const newSig = itemsSignature(DEFAULT_CONFIG.items);
+
+    if(oldSig !== newSig){
+      // 항목 구조 변경 → 누적 데이터 무효 → 초기화
       listKeys('day:').forEach(delKey);
       delKey('total_liter');
       c = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
       setKey('config', c);
-      migrated = true;
+      return { config: c, note: '항목 변경 — 기존 데이터 초기화됨' };
     }
-    const tw = c.items.reduce((s,i)=> s + i.weight, 0);
-    c.items.forEach(it => { it.liter = (it.weight / tw) * c.daily_total; });
-    return { config: c, migrated };
+
+    // 항목 동일 → bucket_goal·daily_total·version만 갱신, 누적 보존
+    let updated = false;
+    if(c.version !== CONFIG_VERSION){
+      c.version = CONFIG_VERSION;
+      updated = true;
+    }
+    if(c.bucket_goal !== DEFAULT_CONFIG.bucket_goal){
+      const oldGoal = c.bucket_goal;
+      c.bucket_goal = DEFAULT_CONFIG.bucket_goal;
+      updated = true;
+      migrationNote = `통 목표 ${oldGoal}L → ${DEFAULT_CONFIG.bucket_goal}L`;
+    }
+    if(c.daily_total !== DEFAULT_CONFIG.daily_total){
+      c.daily_total = DEFAULT_CONFIG.daily_total;
+      updated = true;
+    }
+    if(c.bootstrap_source !== DEFAULT_CONFIG.bootstrap_source){
+      c.bootstrap_source = DEFAULT_CONFIG.bootstrap_source;
+      updated = true;
+    }
+    if(updated) setKey('config', c);
+    return { config: c, note: migrationNote };
   }
 
   function initTotalLiter(){
@@ -300,6 +339,11 @@
     });
     totalLiter = sum;
     setKey('total_liter', totalLiter);
+  }
+
+  function computeItemLiters(){
+    const tw = config.items.reduce((s,i)=> s + i.weight, 0);
+    config.items.forEach(it => { it.liter = (it.weight / tw) * config.daily_total; });
   }
 
   function bucketState(){
@@ -412,11 +456,7 @@
     config.items.forEach((_, i) => grid.appendChild(buildCell(i)));
   }
 
-  // 4단계 흑백 농도 - EPSILON으로 부동소수점 경계 안전 처리
-  // 0% < r < 30%   → 1단계 옅은 회색
-  // 30% <= r < 60% → 2단계 회색
-  // 60% <= r < 90% → 3단계 짙은 회색
-  // 90% <= r       → 4단계 검정
+  // 4단계 흑백 농도
   function densityStyle(r){
     if(r < EPSILON){
       return { bg: null, fg: null, stage: 0 };
@@ -561,8 +601,9 @@
   try {
     const cr = loadConfig();
     config = cr.config;
-    if(cr.migrated){
-      $('footnote').textContent = '항목 변경 — 기존 데이터 초기화됨 · 시작일 2026.05.10';
+    computeItemLiters();
+    if(cr.note){
+      $('footnote').textContent = cr.note + ' · 시작일 2026.05.10 · 통 ' + config.bucket_goal + 'L';
     }
     initTotalLiter();
     renderDate();
