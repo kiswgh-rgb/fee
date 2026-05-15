@@ -247,10 +247,15 @@
   .modal-msg.err { color: #B33A2C; }
   .modal-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: 6px;
     padding: 10px 14px;
     border-top: 0.5px solid var(--border);
+  }
+  .modal-footer-right {
+    display: flex;
+    gap: 6px;
   }
   .modal-btn {
     padding: 8px 14px;
@@ -323,8 +328,11 @@
         <div id="record-msg" class="modal-msg"></div>
       </div>
       <div class="modal-footer">
-        <button id="record-close" type="button" class="modal-btn">닫기</button>
-        <button id="record-apply" type="button" class="modal-btn primary">반영</button>
+        <button id="record-select-all" type="button" class="modal-btn">전체선택</button>
+        <div class="modal-footer-right">
+          <button id="record-close" type="button" class="modal-btn">닫기</button>
+          <button id="record-apply" type="button" class="modal-btn primary">반영</button>
+        </div>
       </div>
     </div>
   </div>
@@ -825,6 +833,12 @@
   $('btn-record').addEventListener('click', openRecordModal);
   $('record-close').addEventListener('click', closeRecordModal);
   $('record-apply').addEventListener('click', applyRecord);
+  $('record-select-all').addEventListener('click', () => {
+    const ta = $('record-text');
+    ta.focus();
+    ta.select();
+    try { ta.setSelectionRange(0, ta.value.length); } catch(e){}
+  });
 
   try {
     const cr = loadConfig();
