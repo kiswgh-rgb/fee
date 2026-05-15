@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#FFFFFF">
-<title>Fee — 일일 습관 트래커 v9.5</title>
+<title>Fee — 일일 습관 트래커 v9.6</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -74,7 +74,7 @@
     justify-content: center;
     gap: 4px;
   }
-  .cell.checked { background: var(--accent-bg); border-color: var(--accent); }
+  .cell.checked { background: var(--accent-bg); }
   .cell-name {
     font-size: 15px;
     font-weight: 500;
@@ -168,12 +168,108 @@
   .cal-cell.selected { outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
   .cal-cell.today:not(.selected) { outline: 1px dashed var(--text-secondary); outline-offset: -1px; }
   .cal-cell.blank { background: transparent; border: none; pointer-events: none; }
-  .footnote {
-    margin-top: 12px;
+  .record-bar {
+    margin-top: 14px;
     text-align: center;
-    font-size: 11px;
-    color: var(--text-tertiary);
   }
+  .record-btn {
+    padding: 8px 18px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    touch-action: manipulation;
+    letter-spacing: 0.02em;
+  }
+  .record-btn:active { background: var(--bg-secondary); }
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+  }
+  .modal {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 360px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 14px 16px 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    border-bottom: 0.5px solid var(--border);
+  }
+  .modal-body {
+    padding: 12px 14px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .modal-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    line-height: 1.45;
+  }
+  .modal-textarea {
+    width: 100%;
+    min-height: 260px;
+    padding: 10px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.45;
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    resize: vertical;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+  }
+  .modal-msg {
+    margin-top: 8px;
+    font-size: 12px;
+    min-height: 16px;
+  }
+  .modal-msg.ok { color: var(--accent); }
+  .modal-msg.err { color: #B33A2C; }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 10px 14px;
+    border-top: 0.5px solid var(--border);
+  }
+  .modal-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    border-radius: 6px;
+    border: 0.5px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .modal-btn:active { background: var(--bg-secondary); }
+  .modal-btn.primary {
+    background: var(--accent);
+    color: #FFFFFF;
+    border-color: var(--accent);
+  }
+  .modal-btn.primary:active { background: var(--accent-dark); }
   .loading {
     text-align: center;
     padding: 32px 0;
@@ -209,7 +305,28 @@
       <div id="cal-grid" class="cal-grid"></div>
     </div>
 
-    <div id="footnote" class="footnote">탭하여 체크/해제 · 시작일 2026.05.10 · 통 365L</div>
+    <div class="record-bar">
+      <button id="btn-record" type="button" class="record-btn">기록</button>
+    </div>
+  </div>
+
+  <div id="modal-record" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">누적 기록</div>
+      <div class="modal-body">
+        <div class="modal-desc">
+          현재까지의 모든 데이터(설정·일별 체크·누적 리터)입니다.
+          텍스트를 직접 수정한 뒤 반영을 누르면 저장됩니다.
+          다른 버전에서 사용하려면 전체를 복사해 두세요.
+        </div>
+        <textarea id="record-text" class="modal-textarea" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+        <div id="record-msg" class="modal-msg"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="record-close" type="button" class="modal-btn">닫기</button>
+        <button id="record-apply" type="button" class="modal-btn primary">반영</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -283,7 +400,6 @@
   function loadConfig(){
     let c = getKey('config');
 
-    // 신규 또는 항목 구조 변경 시: 전체 초기화
     if(!c){
       c = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
       setKey('config', c);
@@ -326,6 +442,11 @@
     return { config: c, note: migrationNote };
   }
 
+  function computeItemLiters(){
+    const tw = config.items.reduce((s,i)=> s + i.weight, 0);
+    config.items.forEach(it => { it.liter = (it.weight / tw) * config.daily_total; });
+  }
+
   function initTotalLiter(){
     const s = getKey('total_liter');
     if(typeof s === 'number'){ totalLiter = s; return; }
@@ -339,11 +460,6 @@
     });
     totalLiter = sum;
     setKey('total_liter', totalLiter);
-  }
-
-  function computeItemLiters(){
-    const tw = config.items.reduce((s,i)=> s + i.weight, 0);
-    config.items.forEach(it => { it.liter = (it.weight / tw) * config.daily_total; });
   }
 
   function bucketState(){
@@ -456,7 +572,6 @@
     config.items.forEach((_, i) => grid.appendChild(buildCell(i)));
   }
 
-  // 4단계 흑백 농도
   function densityStyle(r){
     if(r < EPSILON){
       return { bg: null, fg: null, stage: 0 };
@@ -598,13 +713,123 @@
     updateCalNav();
   });
 
+  // ===== 기록 모달 =====
+  function collectRecord(){
+    const data = {
+      format: 'fee-record-1',
+      exported_at: new Date().toISOString(),
+      app_version: 'v9.6',
+      config: getKey('config'),
+      total_liter: getKey('total_liter'),
+      days: {}
+    };
+    listKeys('day:').forEach(k => {
+      const dk = k.slice(4); // 'day:' 제거
+      data.days[dk] = getKey(k);
+    });
+    return data;
+  }
+
+  function openRecordModal(){
+    const data = collectRecord();
+    $('record-text').value = JSON.stringify(data, null, 2);
+    $('record-msg').textContent = '';
+    $('record-msg').className = 'modal-msg';
+    $('modal-record').classList.remove('hidden');
+  }
+
+  function closeRecordModal(){
+    $('modal-record').classList.add('hidden');
+  }
+
+  function showMsg(text, kind){
+    const m = $('record-msg');
+    m.textContent = text;
+    m.className = 'modal-msg' + (kind ? ' ' + kind : '');
+  }
+
+  function applyRecord(){
+    let parsed;
+    try {
+      parsed = JSON.parse($('record-text').value);
+    } catch(e){
+      showMsg('JSON 형식 오류: ' + e.message, 'err');
+      return;
+    }
+
+    // 최소 검증
+    if(!parsed || typeof parsed !== 'object'){
+      showMsg('데이터 형식이 올바르지 않습니다', 'err');
+      return;
+    }
+    if(!parsed.config || !Array.isArray(parsed.config.items)){
+      showMsg('config.items 누락', 'err');
+      return;
+    }
+    if(parsed.days && typeof parsed.days !== 'object'){
+      showMsg('days 형식 오류', 'err');
+      return;
+    }
+
+    try {
+      // 기존 데이터 클리어
+      listKeys('day:').forEach(delKey);
+      delKey('config');
+      delKey('total_liter');
+
+      // 새 데이터 쓰기
+      setKey('config', parsed.config);
+      if(typeof parsed.total_liter === 'number'){
+        setKey('total_liter', parsed.total_liter);
+      }
+      if(parsed.days){
+        Object.keys(parsed.days).forEach(dk => {
+          setKey('day:' + dk, parsed.days[dk]);
+        });
+      }
+
+      // 인라인 재렌더링 (PWA에서 location.reload 불안정)
+      const cr = loadConfig();
+      config = cr.config;
+      computeItemLiters();
+
+      // total_liter 재계산 또는 보존
+      const ts = getKey('total_liter');
+      if(typeof ts === 'number'){
+        totalLiter = ts;
+      } else {
+        totalLiter = 0;
+        listKeys('day:').forEach(k => {
+          const day = getKey(k);
+          if(!day || !day.checks) return;
+          day.checks.forEach((c, i) => {
+            if(c && config.items[i]) totalLiter += config.items[i].liter;
+          });
+        });
+        setKey('total_liter', totalLiter);
+      }
+
+      renderDate();
+      renderChecks();
+      updateSummary();
+      renderCalendar();
+      updateCalNav();
+
+      showMsg('반영 완료', 'ok');
+      setTimeout(closeRecordModal, 600);
+    } catch(e){
+      showMsg('반영 실패: ' + (e && e.message ? e.message : e), 'err');
+    }
+  }
+
+  $('btn-record').addEventListener('click', openRecordModal);
+  $('record-close').addEventListener('click', closeRecordModal);
+  $('record-apply').addEventListener('click', applyRecord);
+
   try {
     const cr = loadConfig();
     config = cr.config;
     computeItemLiters();
-    if(cr.note){
-      $('footnote').textContent = cr.note + ' · 시작일 2026.05.10 · 통 ' + config.bucket_goal + 'L';
-    }
     initTotalLiter();
     renderDate();
     renderChecks();
