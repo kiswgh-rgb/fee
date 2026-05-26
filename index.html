@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#FFFFFF">
-<title>Fee — 일일 습관 트래커 v9.6</title>
+<title>Fee — 일일 습관 트래커 v10.3</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -52,13 +52,13 @@
   .date-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
   .check-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 8px;
     margin-bottom: 16px;
   }
   .cell {
-    min-height: 88px;
-    padding: 12px;
+    min-height: 64px;
+    padding: 12px 16px;
     border: 0.5px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--bg-primary);
@@ -69,23 +69,31 @@
     touch-action: manipulation;
     transition: background 0.2s, border-color 0.2s;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    justify-content: center;
-    gap: 4px;
+    justify-content: space-between;
+    gap: 8px;
   }
-  .cell.checked { background: var(--accent-bg); }
+  .cell.checked { background: var(--accent-bg); border-color: var(--accent); }
   .cell-name {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 500;
     color: var(--text-primary);
-    text-align: center;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
   }
   .cell.checked .cell-name { color: var(--accent-dark); }
-  .cell-weight {
+  .cell-count {
     font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    letter-spacing: 0.02em;
+  }
+  .cell.checked .cell-count { color: var(--accent); }
+  .cell-weight {
+    font-size: 13px;
     color: var(--text-secondary);
-    text-align: center;
   }
   .cell.checked .cell-weight { color: var(--accent); }
   .summary {
@@ -320,7 +328,7 @@
       <div class="modal-header">누적 기록</div>
       <div class="modal-body">
         <div class="modal-desc">
-          현재까지의 모든 데이터(설정·일별 체크·누적 리터)입니다.
+          현재까지의 모든 데이터(설정·일별 체크·이월 비율·누적 리터)입니다.
           텍스트를 직접 수정한 뒤 반영을 누르면 저장됩니다.
           다른 버전에서 사용하려면 전체를 복사해 두세요.
         </div>
@@ -342,8 +350,9 @@
 (function(){
   'use strict';
 
-  const STORAGE_PREFIX = 'fee_v9_';
-  const CONFIG_VERSION = 'v9.5';
+  const STORAGE_PREFIX = 'fee_v10_';
+  const CONFIG_VERSION = 'v10.3';
+  const APP_VERSION = 'v10.3';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -352,14 +361,42 @@
   const DEFAULT_CONFIG = {
     version: CONFIG_VERSION,
     items: [
-      { name: '아침공부', weight: 30 },
-      { name: '점심공부', weight: 10 },
+      { name: '수면의식', weight: 40 },
       { name: '저녁공부', weight: 30 },
       { name: '케틀벨',   weight: 30 }
     ],
     daily_total: 1.0,
     bucket_goal: 365,
     bootstrap_source: 'chi_bootstrap_2026-05-13'
+  };
+
+  // === v9.6 → v10.x 마이그레이션 (최초 1회만 실행) ===
+  const LEGACY_IMPORT = {
+    seed_total_liter: 7.599999999999996,
+    legacy_items: [
+      { name: '아침공부', weight: 30 },
+      { name: '점심공부', weight: 10 },
+      { name: '저녁공부', weight: 30 },
+      { name: '케틀벨',   weight: 30 }
+    ],
+    legacy_daily_total: 1,
+    legacy_cutoff_date: '2026-05-25',
+    days: {
+      '2026-05-10': [false, true, true, true],
+      '2026-05-11': [false, true, true, true],
+      '2026-05-12': [false, true, true, true],
+      '2026-05-13': [false, true, true, true],
+      '2026-05-14': [false, false, false, true],
+      '2026-05-15': [true, false, false, true],
+      '2026-05-16': [true, false, false, false],
+      '2026-05-17': [false, true, false, true],
+      '2026-05-18': [false, false, true, true],
+      '2026-05-19': [false, false, true, false],
+      '2026-05-20': [false, true, false, false],
+      '2026-05-21': [true, true, true, true],
+      '2026-05-22': [false, false, true, true],
+      '2026-05-25': [true, false, false, true]
+    }
   };
 
   const $ = (id) => document.getElementById(id);
@@ -392,9 +429,28 @@
     return out;
   }
 
-  // 항목 구조 동일성 검사 (이름+가중치 시퀀스)
   function itemsSignature(items){
     return items.map(i => `${i.name}:${i.weight}`).join('|');
+  }
+
+  function runLegacyImport(){
+    if(getKey('legacy_imported')) return false;
+
+    const lw = LEGACY_IMPORT.legacy_items.reduce((s,i)=> s + i.weight, 0);
+    const liters = LEGACY_IMPORT.legacy_items.map(i => (i.weight / lw) * LEGACY_IMPORT.legacy_daily_total);
+
+    Object.keys(LEGACY_IMPORT.days).forEach(dk => {
+      const checks = LEGACY_IMPORT.days[dk];
+      let dl = 0;
+      checks.forEach((c, i) => { if(c) dl += liters[i]; });
+      const ratio = Math.min(1, dl / LEGACY_IMPORT.legacy_daily_total);
+      setKey('legacy:' + dk, { ratio: ratio });
+    });
+
+    setKey('total_liter', LEGACY_IMPORT.seed_total_liter);
+    setKey('legacy_imported', true);
+    setKey('legacy_cutoff', LEGACY_IMPORT.legacy_cutoff_date);
+    return true;
   }
 
   let config = null;
@@ -404,6 +460,20 @@
   if(viewDate.getTime() < START_DATE.getTime()) viewDate = new Date(START_DATE);
   let calMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
   let migrationNote = null;
+
+  // 항목별 누적 달성 일수 (v10 day:* 키에서만 집계)
+  let itemCounts = [];
+
+  function recomputeItemCounts(){
+    itemCounts = config.items.map(()=> 0);
+    listKeys('day:').forEach(k => {
+      const day = getKey(k);
+      if(!day || !day.checks) return;
+      day.checks.forEach((c, i) => {
+        if(c && itemCounts[i] !== undefined) itemCounts[i] += 1;
+      });
+    });
+  }
 
   function loadConfig(){
     let c = getKey('config');
@@ -418,41 +488,30 @@
     const newSig = itemsSignature(DEFAULT_CONFIG.items);
 
     if(oldSig !== newSig){
-      // 항목 구조 변경 → 누적 데이터 무효 → 초기화
       listKeys('day:').forEach(delKey);
+      listKeys('legacy:').forEach(delKey);
       delKey('total_liter');
+      delKey('legacy_imported');
+      delKey('legacy_cutoff');
       c = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
       setKey('config', c);
       return { config: c, note: '항목 변경 — 기존 데이터 초기화됨' };
     }
 
-    // 항목 동일 → bucket_goal·daily_total·version만 갱신, 누적 보존
     let updated = false;
-    if(c.version !== CONFIG_VERSION){
-      c.version = CONFIG_VERSION;
-      updated = true;
-    }
+    if(c.version !== CONFIG_VERSION){ c.version = CONFIG_VERSION; updated = true; }
     if(c.bucket_goal !== DEFAULT_CONFIG.bucket_goal){
       const oldGoal = c.bucket_goal;
       c.bucket_goal = DEFAULT_CONFIG.bucket_goal;
       updated = true;
       migrationNote = `통 목표 ${oldGoal}L → ${DEFAULT_CONFIG.bucket_goal}L`;
     }
-    if(c.daily_total !== DEFAULT_CONFIG.daily_total){
-      c.daily_total = DEFAULT_CONFIG.daily_total;
-      updated = true;
-    }
-    if(c.bootstrap_source !== DEFAULT_CONFIG.bootstrap_source){
-      c.bootstrap_source = DEFAULT_CONFIG.bootstrap_source;
-      updated = true;
-    }
+    if(c.daily_total !== DEFAULT_CONFIG.daily_total){ c.daily_total = DEFAULT_CONFIG.daily_total; updated = true; }
+    if(c.bootstrap_source !== DEFAULT_CONFIG.bootstrap_source){ c.bootstrap_source = DEFAULT_CONFIG.bootstrap_source; updated = true; }
+    // 이전 버전의 start_date 잔재 제거
+    c.items.forEach(it => { if('start_date' in it) delete it.start_date; });
     if(updated) setKey('config', c);
     return { config: c, note: migrationNote };
-  }
-
-  function computeItemLiters(){
-    const tw = config.items.reduce((s,i)=> s + i.weight, 0);
-    config.items.forEach(it => { it.liter = (it.weight / tw) * config.daily_total; });
   }
 
   function initTotalLiter(){
@@ -468,6 +527,11 @@
     });
     totalLiter = sum;
     setKey('total_liter', totalLiter);
+  }
+
+  function computeItemLiters(){
+    const tw = config.items.reduce((s,i)=> s + i.weight, 0);
+    config.items.forEach(it => { it.liter = (it.weight / tw) * config.daily_total; });
   }
 
   function bucketState(){
@@ -491,24 +555,45 @@
     return s;
   }
 
+  function isLegacyDate(d){
+    const cutoff = getKey('legacy_cutoff');
+    if(!cutoff) return false;
+    return dateKey(d) <= cutoff;
+  }
+
   function renderDate(){
     $('date-label').textContent = `${viewDate.getFullYear()}.${pad(viewDate.getMonth()+1)}.${pad(viewDate.getDate())}`;
-    $('date-sub').textContent = isToday(viewDate) ? `오늘 · ${weekdayKo(viewDate)}요일` : `${weekdayKo(viewDate)}요일`;
+    let sub = isToday(viewDate) ? `오늘 · ${weekdayKo(viewDate)}요일` : `${weekdayKo(viewDate)}요일`;
+    if(isLegacyDate(viewDate) && getKey('legacy:' + dateKey(viewDate))){
+      sub += ' · 이월 기록';
+    }
+    $('date-sub').textContent = sub;
   }
 
   function buildCell(idx){
     const it = config.items[idx];
     const checked = currentDay.checks[idx];
+    const legacy = isLegacyDate(viewDate);
     const cell = document.createElement('div');
     cell.className = 'cell' + (checked ? ' checked' : '');
     cell.dataset.idx = idx;
     cell.setAttribute('role', 'button');
     cell.setAttribute('tabindex', '0');
     cell.setAttribute('aria-pressed', checked ? 'true' : 'false');
+
+    if(legacy){
+      cell.style.opacity = '0.5';
+      cell.style.cursor = 'not-allowed';
+    }
+
+    const cnt = itemCounts[idx] || 0;
+    const countHtml = `<span class="cell-count">${cnt}D</span>`;
+
     cell.innerHTML =
-      '<div class="cell-name">' + it.name + '</div>' +
+      '<div class="cell-name">' + it.name + countHtml + '</div>' +
       '<div class="cell-weight">' + it.weight + '%</div>';
-    attachTap(cell, idx);
+
+    if(!legacy) attachTap(cell, idx);
     return cell;
   }
 
@@ -521,8 +606,13 @@
       currentDay.checks[idx] = nc;
       const delta = config.items[idx].liter * (nc ? 1 : -1);
       totalLiter = Math.max(0, totalLiter + delta);
+      // 항목 카운트 증감
+      itemCounts[idx] = Math.max(0, (itemCounts[idx] || 0) + (nc ? 1 : -1));
       cell.classList.toggle('checked', nc);
       cell.setAttribute('aria-pressed', nc ? 'true' : 'false');
+      // 카운트 표시 갱신
+      const cntEl = cell.querySelector('.cell-count');
+      if(cntEl) cntEl.textContent = itemCounts[idx] + 'D';
       updateSummary();
       paintCalCell(viewDate);
       haptic();
@@ -546,20 +636,12 @@
         const dy = e.changedTouches[0].clientY - tStartY;
         if(Math.abs(dx) > TOL || Math.abs(dy) > TOL) moved = true;
       }
-      if(!moved){
-        e.preventDefault();
-        toggle();
-      }
+      if(!moved){ e.preventDefault(); toggle(); }
       setTimeout(() => { tTouched = false; }, 400);
     }, { passive: false });
 
     cell.addEventListener('touchcancel', () => { tTouched = false; }, { passive: true });
-
-    cell.addEventListener('click', () => {
-      if(tTouched) return;
-      toggle();
-    });
-
+    cell.addEventListener('click', () => { if(tTouched) return; toggle(); });
     cell.addEventListener('keydown', (e) => {
       if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); toggle(); }
     });
@@ -581,18 +663,10 @@
   }
 
   function densityStyle(r){
-    if(r < EPSILON){
-      return { bg: null, fg: null, stage: 0 };
-    }
-    if(r < 0.30 - EPSILON){
-      return { bg: '#E8E8E8', fg: '#1A1A1A', stage: 1 };
-    }
-    if(r < 0.60 - EPSILON){
-      return { bg: '#B0B0B0', fg: '#1A1A1A', stage: 2 };
-    }
-    if(r < 0.90 - EPSILON){
-      return { bg: '#606060', fg: '#FFFFFF', stage: 3 };
-    }
+    if(r < EPSILON) return { bg: null, fg: null, stage: 0 };
+    if(r < 0.30 - EPSILON) return { bg: '#E8E8E8', fg: '#1A1A1A', stage: 1 };
+    if(r < 0.60 - EPSILON) return { bg: '#B0B0B0', fg: '#1A1A1A', stage: 2 };
+    if(r < 0.90 - EPSILON) return { bg: '#606060', fg: '#FFFFFF', stage: 3 };
     return { bg: '#1A1A1A', fg: '#FFFFFF', stage: 4 };
   }
 
@@ -611,10 +685,14 @@
 
   function ratioFromKey(k){
     const day = getKey('day:' + k);
-    const checks = day && day.checks ? day.checks : [];
-    let l = 0;
-    checks.forEach((c, i) => { if(c && config.items[i]) l += config.items[i].liter; });
-    return Math.min(1, l / config.daily_total);
+    if(day && day.checks){
+      let l = 0;
+      day.checks.forEach((c, i) => { if(c && config.items[i]) l += config.items[i].liter; });
+      if(l > 0) return Math.min(1, l / config.daily_total);
+    }
+    const legacy = getKey('legacy:' + k);
+    if(legacy && typeof legacy.ratio === 'number') return legacy.ratio;
+    return 0;
   }
 
   function paintCalCell(d){
@@ -726,14 +804,20 @@
     const data = {
       format: 'fee-record-1',
       exported_at: new Date().toISOString(),
-      app_version: 'v9.6',
+      app_version: APP_VERSION,
       config: getKey('config'),
       total_liter: getKey('total_liter'),
-      days: {}
+      days: {},
+      legacy: {},
+      legacy_cutoff: getKey('legacy_cutoff') || null
     };
     listKeys('day:').forEach(k => {
-      const dk = k.slice(4); // 'day:' 제거
+      const dk = k.slice(4);
       data.days[dk] = getKey(k);
+    });
+    listKeys('legacy:').forEach(k => {
+      const dk = k.slice(7);
+      data.legacy[dk] = getKey(k);
     });
     return data;
   }
@@ -765,7 +849,6 @@
       return;
     }
 
-    // 최소 검증
     if(!parsed || typeof parsed !== 'object'){
       showMsg('데이터 형식이 올바르지 않습니다', 'err');
       return;
@@ -778,30 +861,34 @@
       showMsg('days 형식 오류', 'err');
       return;
     }
+    if(parsed.legacy && typeof parsed.legacy !== 'object'){
+      showMsg('legacy 형식 오류', 'err');
+      return;
+    }
 
     try {
-      // 기존 데이터 클리어
       listKeys('day:').forEach(delKey);
+      listKeys('legacy:').forEach(delKey);
       delKey('config');
       delKey('total_liter');
+      delKey('legacy_cutoff');
 
-      // 새 데이터 쓰기
+      setKey('legacy_imported', true);
       setKey('config', parsed.config);
-      if(typeof parsed.total_liter === 'number'){
-        setKey('total_liter', parsed.total_liter);
-      }
+      if(typeof parsed.total_liter === 'number') setKey('total_liter', parsed.total_liter);
+      if(parsed.legacy_cutoff) setKey('legacy_cutoff', parsed.legacy_cutoff);
       if(parsed.days){
-        Object.keys(parsed.days).forEach(dk => {
-          setKey('day:' + dk, parsed.days[dk]);
-        });
+        Object.keys(parsed.days).forEach(dk => { setKey('day:' + dk, parsed.days[dk]); });
+      }
+      if(parsed.legacy){
+        Object.keys(parsed.legacy).forEach(dk => { setKey('legacy:' + dk, parsed.legacy[dk]); });
       }
 
-      // 인라인 재렌더링 (PWA에서 location.reload 불안정)
       const cr = loadConfig();
       config = cr.config;
       computeItemLiters();
+      recomputeItemCounts();
 
-      // total_liter 재계산 또는 보존
       const ts = getKey('total_liter');
       if(typeof ts === 'number'){
         totalLiter = ts;
@@ -844,7 +931,11 @@
     const cr = loadConfig();
     config = cr.config;
     computeItemLiters();
+
+    runLegacyImport();
     initTotalLiter();
+    recomputeItemCounts();
+
     renderDate();
     renderChecks();
     updateSummary();
