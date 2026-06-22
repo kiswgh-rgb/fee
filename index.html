@@ -1037,12 +1037,82 @@
     $('modal-sync').classList.add('hidden');
   }
 
+  // UTF-8 안전 base64 (한글 항목명 포함)
+  function toBase64(str){
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    for(let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  async function safeErr(res){
+    try { const j = await res.json(); return (j && j.message) ? j.message : (res.statusText || ''); }
+    catch(e){ return res.statusText || ''; }
+  }
+
+  async function doSync(){
+    const cfg = readSyncInputs();
+    saveSyncConfig(cfg);
+
+    if(!cfg.pat){ syncMsg('PAT를 입력하세요', 'err'); return; }
+    if(!cfg.owner){ syncMsg('owner(계정명)를 입력하세요', 'err'); return; }
+    if(!cfg.repo){ syncMsg('레포명을 입력하세요', 'err'); return; }
+
+    $('sync-run').disabled = true;
+    syncMsg('동기화 중...', '');
+
+    try {
+      const content = toBase64(JSON.stringify(collectRecord(), null, 2));
+      const encPath = cfg.path.split('/').map(encodeURIComponent).join('/');
+      const apiUrl = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encPath;
+      const headers = {
+        'Authorization': 'Bearer ' + cfg.pat,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      };
+
+      // 1) 기존 파일 sha 조회 (없으면 404 → 신규 생성)
+      let sha = null;
+      const getRes = await fetch(apiUrl + '?ref=' + encodeURIComponent(cfg.branch), { headers: headers });
+      if(getRes.ok){
+        const j = await getRes.json();
+        sha = j && j.sha ? j.sha : null;
+      } else if(getRes.status !== 404){
+        syncMsg('조회 실패 (' + getRes.status + '): ' + await safeErr(getRes), 'err');
+        return;
+      }
+
+      // 2) PUT 으로 전체 덮어쓰기
+      const body = {
+        message: 'journal sync ' + dateKey(new Date()),
+        content: content,
+        branch: cfg.branch
+      };
+      if(sha) body.sha = sha;
+
+      const putRes = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+        body: JSON.stringify(body)
+      });
+      if(!putRes.ok){
+        syncMsg('동기화 실패 (' + putRes.status + '): ' + await safeErr(putRes), 'err');
+        return;
+      }
+
+      const pj = await putRes.json();
+      const commitSha = (pj && pj.commit && pj.commit.sha) ? pj.commit.sha.slice(0,7) : '?';
+      const now = new Date();
+      syncMsg('동기화 완료 · ' + commitSha + ' · ' + pad(now.getHours()) + ':' + pad(now.getMinutes()), 'ok');
+    } catch(e){
+      syncMsg('네트워크 오류: ' + (e && e.message ? e.message : e), 'err');
+    } finally {
+      $('sync-run').disabled = false;
+    }
+  }
+
   $('btn-sync').addEventListener('click', openSyncModal);
   $('sync-close').addEventListener('click', closeSyncModal);
-  $('sync-run').addEventListener('click', () => {
-    saveSyncConfig(readSyncInputs());
-    syncMsg('설정 저장됨', 'ok');
-  });
+  $('sync-run').addEventListener('click', doSync);
 
   try {
     const cr = loadConfig();
