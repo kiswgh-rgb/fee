@@ -45,7 +45,7 @@
   .container {
     max-width: 380px;
     margin: 0 auto;
-    padding: 16px 16px 32px;
+    padding: 16px 16px calc(80px + env(safe-area-inset-bottom, 0));
   }
   .header {
     text-align: center;
@@ -316,6 +316,72 @@
     box-sizing: border-box;
     -webkit-appearance: none;
   }
+  .study-cards { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .study-row {
+    display: flex; align-items: center; justify-content: space-between;
+    min-height: 56px; padding: 10px 14px;
+    border: 0.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-primary);
+  }
+  .study-name { font-size: 16px; font-weight: 500; color: var(--text-primary); }
+  .study-ctrl { display: flex; align-items: center; gap: 10px; }
+  .study-hours { font-size: 15px; font-weight: 500; color: var(--accent); min-width: 50px; text-align: center; font-variant-numeric: tabular-nums; }
+  .study-step {
+    width: 36px; height: 36px; padding: 0; font-size: 20px; font-family: inherit; line-height: 1;
+    border: 0.5px solid var(--border); border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary);
+    cursor: pointer; touch-action: manipulation; display: flex; align-items: center; justify-content: center;
+  }
+  .study-step:disabled { opacity: 0.3; }
+  .study-step:not(:disabled):active { background: var(--bg-tertiary); }
+  .study-density { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .study-density-label { font-size: 13px; color: var(--text-secondary); margin-right: 2px; }
+  .density-btn {
+    flex: 1; padding: 10px 0; font-size: 14px; font-family: inherit;
+    border: 0.5px solid var(--border); border-radius: 8px; background: var(--bg-primary); color: var(--text-secondary);
+    cursor: pointer; touch-action: manipulation;
+  }
+  .density-btn.active { background: var(--accent-bg); border-color: transparent; outline: 1.5px solid var(--accent); outline-offset: -1.5px; color: var(--accent-dark); font-weight: 600; }
+  .density-btn:not(.active):active { background: var(--bg-secondary); }
+  .study-summary { text-align: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+  .study-summary span { color: var(--accent); font-weight: 600; }
+  .navbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+    display: flex; max-width: 380px; margin: 0 auto;
+    background: var(--bg-primary); border-top: 0.5px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .nav-btn {
+    flex: 1; padding: 12px 0; font-size: 13px; font-weight: 600; font-family: inherit;
+    border: none; background: transparent; color: var(--text-tertiary); cursor: pointer;
+    touch-action: manipulation; letter-spacing: 0.02em;
+  }
+  .nav-btn.active { color: var(--accent); }
+  .nav-btn.nav-icon { flex: 0 0 48px; font-size: 18px; font-weight: 400; }
+  .nav-btn:active { background: var(--bg-secondary); }
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%) translateY(20px);
+    bottom: calc(66px + env(safe-area-inset-bottom, 0)); z-index: 120;
+    max-width: 320px; width: max-content; padding: 10px 16px; border-radius: 8px;
+    background: #2A2A2A; color: #FFF; font-size: 13px; line-height: 1.4; text-align: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.ok { background: var(--accent); }
+  .toast.err { background: #B33A2C; }
+  .set-actions { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+  .set-action-btn {
+    padding: 11px 12px; font-size: 14px; font-family: inherit; border-radius: 8px;
+    border: 0.5px solid var(--border); background: var(--bg-secondary); color: var(--text-primary);
+    cursor: pointer; touch-action: manipulation; text-align: left;
+  }
+  .set-action-btn b { display: block; font-size: 14px; }
+  .set-action-btn small { color: var(--text-tertiary); font-weight: 400; }
+  .set-action-btn:active { background: var(--bg-tertiary); }
+  .set-lastsync { font-size: 12px; color: var(--text-tertiary); margin: 6px 0; }
+  .set-adv { margin-top: 10px; border-top: 0.5px solid var(--border); padding-top: 10px; }
+  .set-adv summary { font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+  .set-adv-btns { display: flex; gap: 6px; margin-top: 8px; }
+  .set-adv-btns .modal-btn { flex: 1; }
   .hidden { display: none; }
 </style>
 </head>
@@ -328,11 +394,23 @@
       <div id="date-sub" class="date-sub">—</div>
     </div>
 
-    <div id="check-grid" class="check-grid"></div>
+    <div id="view-habit">
+      <div id="check-grid" class="check-grid"></div>
+      <div class="summary">
+        <div>오늘 <span id="today-liter">0.00</span>L</div>
+        <div>누적 <strong class="total-val"><span id="bucket-current">0.00</span></strong> / <span id="bucket-goal">365</span>L<span id="bucket-num" class="bucket-num"></span></div>
+      </div>
+    </div>
 
-    <div class="summary">
-      <div>오늘 <span id="today-liter">0.00</span>L</div>
-      <div>누적 <strong class="total-val"><span id="bucket-current">0.00</span></strong> / <span id="bucket-goal">365</span>L<span id="bucket-num" class="bucket-num"></span></div>
+    <div id="view-study" class="hidden">
+      <div id="study-cards" class="study-cards"></div>
+      <div class="study-density">
+        <span class="study-density-label">밀도</span>
+        <button id="density-1" type="button" class="density-btn">하</button>
+        <button id="density-2" type="button" class="density-btn">중</button>
+        <button id="density-3" type="button" class="density-btn">상</button>
+      </div>
+      <div class="study-summary">오늘 <span id="study-today">0.0</span>h · 누적 <span id="study-total">0</span>h</div>
     </div>
 
     <div class="calendar">
@@ -344,21 +422,23 @@
       <div id="cal-weekdays" class="cal-weekdays"></div>
       <div id="cal-grid" class="cal-grid"></div>
     </div>
-
-    <div class="record-bar">
-      <button id="btn-record" type="button" class="record-btn">기록</button>
-      <button id="btn-sync" type="button" class="record-btn">동기화</button>
-    </div>
   </div>
+
+  <nav id="navbar" class="navbar hidden">
+    <button id="nav-habit" type="button" class="nav-btn active">F</button>
+    <button id="nav-study" type="button" class="nav-btn">S</button>
+    <button id="nav-sync" type="button" class="nav-btn">Sync</button>
+    <button id="nav-settings" type="button" class="nav-btn nav-icon" aria-label="설정">⚙</button>
+  </nav>
+  <div id="toast" class="toast"></div>
 
   <div id="modal-record" class="modal-backdrop hidden">
     <div class="modal">
-      <div class="modal-header">누적 기록</div>
+      <div id="modal-record-header" class="modal-header">원문(JSON)</div>
       <div class="modal-body">
         <div class="modal-desc">
-          현재까지의 모든 데이터(설정·일별 체크·이월 비율·누적 리터)입니다.
-          텍스트를 직접 수정한 뒤 반영을 누르면 저장됩니다.
-          다른 버전에서 사용하려면 전체를 복사해 두세요.
+          전체 데이터(JSON)입니다. 직접 수정한 뒤 반영을 누르면 저장됩니다.
+          복사해서 백업해 두거나, 백업본을 붙여넣어 복구할 수 있습니다.
         </div>
         <textarea id="record-text" class="modal-textarea" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
         <div id="record-msg" class="modal-msg"></div>
@@ -373,42 +453,56 @@
     </div>
   </div>
 
-  <div id="modal-sync" class="modal-backdrop hidden">
+  <div id="modal-settings" class="modal-backdrop hidden">
     <div class="modal">
-      <div class="modal-header">GitHub 동기화</div>
+      <div class="modal-header">⚙ 동기화 설정</div>
       <div class="modal-body">
         <div class="modal-desc">
-          현재 일지 전체(기록 모달과 동일한 JSON)를 private 레포의 파일 하나에 덮어써 올립니다.
-          토큰은 이 기기 localStorage에만 저장되며 코드에는 남지 않습니다.
-          PAT는 대상 레포 Contents 쓰기 권한이 있는 fine-grained 토큰을 사용하세요.
+          PAT는 이 기기 localStorage에만 저장되며 코드에는 남지 않습니다.
+          대상 레포 Contents 쓰기 권한이 있는 fine-grained 토큰을 사용하세요.
         </div>
         <div class="sync-field">
-          <label for="sync-owner">owner (GitHub 계정명)</label>
-          <input id="sync-owner" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="예: kiswgh-rgb">
+          <label for="set-owner">owner (GitHub 계정명)</label>
+          <input id="set-owner" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="예: kiswgh-rgb">
         </div>
         <div class="sync-field">
-          <label for="sync-repo">레포</label>
-          <input id="sync-repo" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="CHI_fee_data">
+          <label for="set-repo">레포</label>
+          <input id="set-repo" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="CHI_fee_data">
         </div>
         <div class="sync-field">
-          <label for="sync-path">파일 경로</label>
-          <input id="sync-path" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="journal.json">
+          <label for="set-branch">브랜치</label>
+          <input id="set-branch" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="main">
         </div>
         <div class="sync-field">
-          <label for="sync-branch">브랜치</label>
-          <input id="sync-branch" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="main">
+          <label for="set-pat">Personal Access Token</label>
+          <input id="set-pat" class="sync-input" type="password" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" placeholder="github_pat_...">
         </div>
         <div class="sync-field">
-          <label for="sync-pat">Personal Access Token</label>
-          <input id="sync-pat" class="sync-input" type="password" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" placeholder="github_pat_...">
+          <label for="set-routine-path">습관 파일</label>
+          <input id="set-routine-path" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="daily_routine.json">
         </div>
-        <div id="sync-msg" class="modal-msg"></div>
+        <div class="sync-field">
+          <label for="set-study-path">스터디 파일</label>
+          <input id="set-study-path" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="semu_study.json">
+        </div>
+        <div class="set-actions">
+          <button id="set-up" type="button" class="set-action-btn"><b>⬆ 올리기 (폰 → repo)</b><small>현재 기록을 repo에 백업 (2파일)</small></button>
+          <button id="set-down" type="button" class="set-action-btn"><b>⬇ 복구 (repo → 폰)</b><small>repo 데이터로 폰 채우기 (2파일)</small></button>
+        </div>
+        <div id="set-lastsync" class="set-lastsync">마지막 동기화: 없음</div>
+        <div id="set-msg" class="modal-msg"></div>
+        <details class="set-adv">
+          <summary>고급 · 원문 JSON 백업/복구</summary>
+          <div class="set-adv-btns">
+            <button id="set-raw-routine" type="button" class="modal-btn">습관 원문</button>
+            <button id="set-raw-study" type="button" class="modal-btn">스터디 원문</button>
+          </div>
+        </details>
       </div>
       <div class="modal-footer">
         <span></span>
         <div class="modal-footer-right">
-          <button id="sync-close" type="button" class="modal-btn">닫기</button>
-          <button id="sync-run" type="button" class="modal-btn primary">동기화</button>
+          <button id="set-close" type="button" class="modal-btn">닫기</button>
         </div>
       </div>
     </div>
@@ -764,11 +858,16 @@
     return 0;
   }
 
+  // 현재 뷰에 맞는 달력 색 비율 (습관=달성비율 / 스터디=시간합×밀도)
+  function calRatioFromKey(k){
+    return currentView === 'study' ? studyRatioFromKey(k) : ratioFromKey(k);
+  }
+
   function paintCalCell(d){
     const k = dateKey(d);
     const cell = document.querySelector('[data-cal-key="' + k + '"]');
     if(!cell) return;
-    applyCellStyle(cell, ratioFromKey(k));
+    applyCellStyle(cell, calRatioFromKey(k));
   }
 
   function renderCalendar(){
@@ -818,26 +917,16 @@
         cell.addEventListener('touchend', (e) => {
           cTouched = true;
           e.preventDefault();
-          viewDate = new Date(d);
-          renderDate();
-          renderChecks();
-          updateSummary();
-          renderCalendar();
-          updateCalNav();
+          onDateSelected(d);
         }, { passive: false });
         cell.addEventListener('click', () => {
           if(cTouched){ cTouched = false; return; }
-          viewDate = new Date(d);
-          renderDate();
-          renderChecks();
-          updateSummary();
-          renderCalendar();
-          updateCalNav();
+          onDateSelected(d);
         });
       }
 
       grid.appendChild(cell);
-      applyCellStyle(cell, ratioFromKey(k));
+      applyCellStyle(cell, calRatioFromKey(k));
     }
   }
 
@@ -891,94 +980,67 @@
     return data;
   }
 
-  function openRecordModal(){
-    const data = collectRecord();
-    $('record-text').value = JSON.stringify(data, null, 2);
-    $('record-msg').textContent = '';
-    $('record-msg').className = 'modal-msg';
-    $('modal-record').classList.remove('hidden');
-  }
-
-  function closeRecordModal(){
-    $('modal-record').classList.add('hidden');
-  }
-
+  // ===== 원문(JSON) 모달 — 습관/스터디 공용 =====
+  let rawTarget = 'routine';
   function showMsg(text, kind){
     const m = $('record-msg');
     m.textContent = text;
     m.className = 'modal-msg' + (kind ? ' ' + kind : '');
   }
+  function openRawModal(target){
+    rawTarget = target;
+    $('modal-record-header').textContent = (target === 'study') ? '스터디 원문(JSON)' : '습관 원문(JSON)';
+    $('record-text').value = JSON.stringify(target === 'study' ? collectStudy() : collectRecord(), null, 2);
+    showMsg('', '');
+    $('modal-record').classList.remove('hidden');
+  }
+  function closeRecordModal(){ $('modal-record').classList.add('hidden'); }
+
+  // 습관 데이터 import (localStorage 저장 + 상태 갱신; DOM 렌더는 호출측 reloadAll)
+  function applyRoutineData(parsed){
+    if(!parsed || typeof parsed !== 'object') throw new Error('데이터 형식 오류');
+    if(!parsed.config || !Array.isArray(parsed.config.items)) throw new Error('config.items 누락');
+    if(parsed.days && typeof parsed.days !== 'object') throw new Error('days 형식 오류');
+    if(parsed.legacy && typeof parsed.legacy !== 'object') throw new Error('legacy 형식 오류');
+
+    listKeys('day:').forEach(delKey);
+    listKeys('legacy:').forEach(delKey);
+    delKey('config'); delKey('total_liter'); delKey('legacy_cutoff');
+
+    setKey('legacy_imported', true);
+    setKey('config', parsed.config);
+    if(typeof parsed.total_liter === 'number') setKey('total_liter', parsed.total_liter);
+    if(parsed.legacy_cutoff) setKey('legacy_cutoff', parsed.legacy_cutoff);
+    if(parsed.days) Object.keys(parsed.days).forEach(dk => setKey('day:' + dk, parsed.days[dk]));
+    if(parsed.legacy) Object.keys(parsed.legacy).forEach(dk => setKey('legacy:' + dk, parsed.legacy[dk]));
+
+    const cr = loadConfig();
+    config = cr.config;
+    computeItemLiters();
+    recomputeItemCounts();
+
+    const ts = getKey('total_liter');
+    if(typeof ts === 'number'){
+      totalLiter = ts;
+    } else {
+      totalLiter = 0;
+      listKeys('day:').forEach(k => {
+        const day = getKey(k);
+        if(!day || !day.checks) return;
+        day.checks.forEach((c, i) => { if(c && config.items[i]) totalLiter += config.items[i].liter; });
+      });
+      setKey('total_liter', totalLiter);
+    }
+  }
 
   function applyRecord(){
     let parsed;
+    try { parsed = JSON.parse($('record-text').value); }
+    catch(e){ showMsg('JSON 형식 오류: ' + e.message, 'err'); return; }
     try {
-      parsed = JSON.parse($('record-text').value);
-    } catch(e){
-      showMsg('JSON 형식 오류: ' + e.message, 'err');
-      return;
-    }
-
-    if(!parsed || typeof parsed !== 'object'){
-      showMsg('데이터 형식이 올바르지 않습니다', 'err');
-      return;
-    }
-    if(!parsed.config || !Array.isArray(parsed.config.items)){
-      showMsg('config.items 누락', 'err');
-      return;
-    }
-    if(parsed.days && typeof parsed.days !== 'object'){
-      showMsg('days 형식 오류', 'err');
-      return;
-    }
-    if(parsed.legacy && typeof parsed.legacy !== 'object'){
-      showMsg('legacy 형식 오류', 'err');
-      return;
-    }
-
-    try {
-      listKeys('day:').forEach(delKey);
-      listKeys('legacy:').forEach(delKey);
-      delKey('config');
-      delKey('total_liter');
-      delKey('legacy_cutoff');
-
-      setKey('legacy_imported', true);
-      setKey('config', parsed.config);
-      if(typeof parsed.total_liter === 'number') setKey('total_liter', parsed.total_liter);
-      if(parsed.legacy_cutoff) setKey('legacy_cutoff', parsed.legacy_cutoff);
-      if(parsed.days){
-        Object.keys(parsed.days).forEach(dk => { setKey('day:' + dk, parsed.days[dk]); });
-      }
-      if(parsed.legacy){
-        Object.keys(parsed.legacy).forEach(dk => { setKey('legacy:' + dk, parsed.legacy[dk]); });
-      }
-
-      const cr = loadConfig();
-      config = cr.config;
-      computeItemLiters();
-      recomputeItemCounts();
-
-      const ts = getKey('total_liter');
-      if(typeof ts === 'number'){
-        totalLiter = ts;
-      } else {
-        totalLiter = 0;
-        listKeys('day:').forEach(k => {
-          const day = getKey(k);
-          if(!day || !day.checks) return;
-          day.checks.forEach((c, i) => {
-            if(c && config.items[i]) totalLiter += config.items[i].liter;
-          });
-        });
-        setKey('total_liter', totalLiter);
-      }
-
-      renderDate();
-      renderChecks();
-      updateSummary();
-      renderCalendar();
-      updateCalNav();
-
+      if(rawTarget === 'study') applyStudy(parsed);
+      else applyRoutineData(parsed);
+      reloadAll();
       showMsg('반영 완료', 'ok');
       setTimeout(closeRecordModal, 600);
     } catch(e){
@@ -986,7 +1048,6 @@
     }
   }
 
-  $('btn-record').addEventListener('click', openRecordModal);
   $('record-close').addEventListener('click', closeRecordModal);
   $('record-apply').addEventListener('click', applyRecord);
   $('record-select-all').addEventListener('click', () => {
@@ -996,51 +1057,244 @@
     try { ta.setSelectionRange(0, ta.value.length); } catch(e){}
   });
 
-  // ===== GitHub 동기화 =====
-  // 설정은 신규 키 'sync'에만 저장 — 기존 day:/legacy:/config/total_liter 와 무관.
+  // ===== 토스트 =====
+  let toastTimer = null;
+  function toast(text, kind){
+    const t = $('toast');
+    t.textContent = text;
+    t.className = 'toast show' + (kind ? ' ' + kind : '');
+    if(toastTimer){ clearTimeout(toastTimer); toastTimer = null; }
+    if(kind){ toastTimer = setTimeout(() => { t.className = 'toast'; }, 2800); }
+  }
+
+  // ===== Study(시험 진도) =====
+  const DEFAULT_STUDY_CONFIG = {
+    version: 'sv1',
+    subjects: ['세법학','회계학','재정학','행정소송법'],
+    hours_step: 0.5, hours_min: 0, hours_max: 8,
+    density_map: { '1':'하', '2':'중', '3':'상' },
+    exams: [ { name: '1차', date: '2027-04-25' } ]
+  };
+  const STUDY_DENSITY_FACTOR = { 1: 0.8, 2: 1.0, 3: 1.2 };
+  let currentView = 'habit';
+  let studyConfig = null;
+  let studyDay = { hours: {}, density: null };
+  let studyTotal = 0;
+
+  function loadStudyConfig(){
+    let c = getKey('study_config');
+    if(!c || typeof c !== 'object'){
+      c = JSON.parse(JSON.stringify(DEFAULT_STUDY_CONFIG));
+      setKey('study_config', c);
+      return c;
+    }
+    // 비파괴: subjects가 달라도 study:* 일별 기록은 절대 삭제하지 않음. 누락 필드만 보정.
+    let updated = false;
+    if(c.version !== DEFAULT_STUDY_CONFIG.version){ c.version = DEFAULT_STUDY_CONFIG.version; updated = true; }
+    if(!Array.isArray(c.subjects) || !c.subjects.length){ c.subjects = DEFAULT_STUDY_CONFIG.subjects.slice(); updated = true; }
+    if(typeof c.hours_step !== 'number'){ c.hours_step = 0.5; updated = true; }
+    if(typeof c.hours_min !== 'number'){ c.hours_min = 0; updated = true; }
+    if(typeof c.hours_max !== 'number'){ c.hours_max = 8; updated = true; }
+    if(!c.density_map){ c.density_map = DEFAULT_STUDY_CONFIG.density_map; updated = true; }
+    if(!Array.isArray(c.exams) || !c.exams.length){ c.exams = DEFAULT_STUDY_CONFIG.exams.slice(); updated = true; }
+    if(updated) setKey('study_config', c);
+    return c;
+  }
+
+  function loadStudyDay(d){
+    let s = getKey('study:' + dateKey(d));
+    if(!s || typeof s !== 'object') s = { hours: {}, density: null };
+    if(!s.hours || typeof s.hours !== 'object') s.hours = {};
+    if(s.density !== 1 && s.density !== 2 && s.density !== 3) s.density = null;
+    return s;
+  }
+  function saveStudyDay(d, s){ setKey('study:' + dateKey(d), s); }
+
+  function studyDayHours(s){
+    let sum = 0;
+    if(s && s.hours) Object.keys(s.hours).forEach(k => { const v = s.hours[k]; if(typeof v === 'number') sum += v; });
+    return sum;
+  }
+  function recomputeStudyTotal(){
+    let sum = 0;
+    listKeys('study:').forEach(k => { sum += studyDayHours(getKey(k)); });
+    studyTotal = sum;
+  }
+
+  function isWeekend(d){ const w = d.getDay(); return w === 0 || w === 6; }
+  // 스터디 달력 농도 = min(1, (시간합 × 밀도계수) / 기준(평일4·주말8))
+  function studyRatioFromKey(k){
+    const s = getKey('study:' + k);
+    if(!s) return 0;
+    const hours = studyDayHours(s);
+    if(hours <= 0) return 0;
+    const factor = STUDY_DENSITY_FACTOR[s.density] || 1.0;
+    const p = k.split('-');
+    const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    const base = isWeekend(d) ? 8 : 4;
+    return Math.min(1, (hours * factor) / base);
+  }
+
+  function ddayString(){
+    const ex = studyConfig && studyConfig.exams && studyConfig.exams[0];
+    if(!ex || !ex.date) return '';
+    const p = ex.date.split('-');
+    const target = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])); target.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
+    const label = ex.name || '시험';
+    if(diff > 0) return label + '까지  D-' + diff;
+    if(diff === 0) return label + '  D-DAY';
+    return label + '  D+' + (-diff);
+  }
+  function renderStudyDate(){
+    $('date-label').textContent = `${viewDate.getFullYear()}.${pad(viewDate.getMonth()+1)}.${pad(viewDate.getDate())}`;
+    $('date-sub').textContent = ddayString();
+  }
+
+  function updateStudySummary(){
+    $('study-today').textContent = studyDayHours(studyDay).toFixed(1);
+    $('study-total').textContent = String(Math.round(studyTotal * 10) / 10);
+  }
+  function renderDensity(){
+    [1,2,3].forEach(lv => { $('density-' + lv).classList.toggle('active', studyDay.density === lv); });
+  }
+
+  function renderStudy(){
+    studyDay = loadStudyDay(viewDate);
+    const wrap = $('study-cards');
+    wrap.innerHTML = '';
+    const step = studyConfig.hours_step || 0.5;
+    studyConfig.subjects.forEach(name => {
+      const row = document.createElement('div');
+      row.className = 'study-row';
+      row.innerHTML =
+        '<div class="study-name"></div>' +
+        '<div class="study-ctrl">' +
+          '<button type="button" class="study-step" data-act="dec">−</button>' +
+          '<span class="study-hours"></span>' +
+          '<button type="button" class="study-step" data-act="inc">+</button>' +
+        '</div>';
+      row.querySelector('.study-name').textContent = name;
+      const hoursEl = row.querySelector('.study-hours');
+      const decBtn = row.querySelector('[data-act="dec"]');
+      const incBtn = row.querySelector('[data-act="inc"]');
+      function curHours(){ const v = studyDay.hours[name]; return (typeof v === 'number') ? v : 0; }
+      function refresh(){
+        const cur = curHours();
+        hoursEl.textContent = cur.toFixed(1) + 'h';
+        decBtn.disabled = cur <= studyConfig.hours_min + EPSILON;
+        incBtn.disabled = cur >= studyConfig.hours_max - EPSILON;
+      }
+      function change(delta){
+        let cur = Math.round((curHours() + delta) / step) * step;
+        cur = Math.min(studyConfig.hours_max, Math.max(studyConfig.hours_min, cur));
+        cur = Math.round(cur * 10) / 10;
+        if(cur > 0) studyDay.hours[name] = cur; else delete studyDay.hours[name];
+        refresh();
+        saveStudyDay(viewDate, studyDay);
+        recomputeStudyTotal();
+        updateStudySummary();
+        paintCalCell(viewDate);
+        haptic();
+      }
+      decBtn.addEventListener('click', () => change(-step));
+      incBtn.addEventListener('click', () => change(step));
+      refresh();
+      wrap.appendChild(row);
+    });
+    renderDensity();
+    updateStudySummary();
+  }
+
+  function setDensity(lv){
+    studyDay = loadStudyDay(viewDate);
+    studyDay.density = (studyDay.density === lv) ? null : lv;
+    saveStudyDay(viewDate, studyDay);
+    renderDensity();
+    paintCalCell(viewDate);
+    haptic();
+  }
+  [1,2,3].forEach(lv => { $('density-' + lv).addEventListener('click', () => setDensity(lv)); });
+
+  function collectStudy(){
+    const data = { format: 'semu-study-1', exported_at: new Date().toISOString(), app_version: APP_VERSION,
+                   config: getKey('study_config'), total_hours: 0, days: {} };
+    let total = 0;
+    listKeys('study:').forEach(k => {
+      const dk = k.slice(6);
+      const s = getKey(k);
+      data.days[dk] = s;
+      total += studyDayHours(s);
+    });
+    data.total_hours = Math.round(total * 10) / 10;
+    return data;
+  }
+  function applyStudy(parsed){
+    if(!parsed || typeof parsed !== 'object') throw new Error('스터디 데이터 형식 오류');
+    if(parsed.days && typeof parsed.days !== 'object') throw new Error('study days 형식 오류');
+    if(parsed.config && Array.isArray(parsed.config.subjects)) setKey('study_config', parsed.config);
+    listKeys('study:').forEach(delKey);
+    if(parsed.days) Object.keys(parsed.days).forEach(dk => setKey('study:' + dk, parsed.days[dk]));
+    studyConfig = loadStudyConfig();
+    recomputeStudyTotal();
+  }
+
+  // ===== 뷰 라우터 =====
+  function onDateSelected(d){
+    viewDate = new Date(d);
+    if(currentView === 'study'){ renderStudyDate(); renderStudy(); }
+    else { renderDate(); renderChecks(); updateSummary(); }
+    renderCalendar();
+    updateCalNav();
+  }
+  function showView(name){
+    currentView = name;
+    const habit = name === 'habit';
+    $('view-habit').classList.toggle('hidden', !habit);
+    $('view-study').classList.toggle('hidden', habit);
+    $('nav-habit').classList.toggle('active', habit);
+    $('nav-study').classList.toggle('active', !habit);
+    if(habit){ renderDate(); renderChecks(); updateSummary(); }
+    else { renderStudyDate(); renderStudy(); }
+    renderCalendar();
+    updateCalNav();
+  }
+  // import/복구 후 전체 재렌더
+  function reloadAll(){
+    if(currentView === 'study'){ renderStudyDate(); renderStudy(); }
+    else { renderDate(); renderChecks(); updateSummary(); }
+    renderCalendar();
+    updateCalNav();
+  }
+
+  // ===== GitHub 동기화 (2파일) =====
+  // 설정은 신규 키 'sync'에만 저장 — 기존 day:/legacy:/config/total_liter/study 와 무관.
   function getSyncConfig(){
     const s = getKey('sync') || {};
+    let routinePath = s.routine_path;
+    if(!routinePath){ routinePath = (s.path && s.path !== 'journal.json') ? s.path : 'daily_routine.json'; }
     return {
       owner:  s.owner  || '',
       repo:   s.repo   || 'CHI_fee_data',
-      path:   s.path   || 'journal.json',
       branch: s.branch || 'main',
-      pat:    s.pat    || ''
+      pat:    s.pat    || '',
+      routine_path: routinePath || 'daily_routine.json',
+      study_path:   s.study_path || 'semu_study.json'
     };
   }
   function readSyncInputs(){
     return {
-      owner:  $('sync-owner').value.trim(),
-      repo:   $('sync-repo').value.trim()   || 'CHI_fee_data',
-      path:   $('sync-path').value.trim()   || 'journal.json',
-      branch: $('sync-branch').value.trim() || 'main',
-      pat:    $('sync-pat').value.trim()
+      owner:  $('set-owner').value.trim(),
+      repo:   $('set-repo').value.trim()   || 'CHI_fee_data',
+      branch: $('set-branch').value.trim() || 'main',
+      pat:    $('set-pat').value.trim(),
+      routine_path: $('set-routine-path').value.trim() || 'daily_routine.json',
+      study_path:   $('set-study-path').value.trim()   || 'semu_study.json'
     };
   }
   function saveSyncConfig(cfg){ setKey('sync', cfg); }
 
-  function syncMsg(text, kind){
-    const m = $('sync-msg');
-    m.textContent = text;
-    m.className = 'modal-msg' + (kind ? ' ' + kind : '');
-  }
-
-  function openSyncModal(){
-    const cfg = getSyncConfig();
-    $('sync-owner').value  = cfg.owner;
-    $('sync-repo').value   = cfg.repo;
-    $('sync-path').value   = cfg.path;
-    $('sync-branch').value = cfg.branch;
-    $('sync-pat').value    = cfg.pat;
-    syncMsg('', '');
-    $('modal-sync').classList.remove('hidden');
-  }
-  function closeSyncModal(){
-    saveSyncConfig(readSyncInputs());
-    $('modal-sync').classList.add('hidden');
-  }
-
-  // UTF-8 안전 base64 (한글 항목명 포함)
   function toBase64(str){
     const bytes = new TextEncoder().encode(str);
     let bin = '';
@@ -1053,7 +1307,7 @@
     for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return new TextDecoder().decode(bytes);
   }
-  // 기록된 날 수 (day + legacy) — 빈 데이터 판별용
+  // 기록된 날 수 (day + legacy 또는 study days) — 빈 데이터 판별용
   function recordEntryCount(rec){
     let n = 0;
     if(rec && rec.days   && typeof rec.days   === 'object') n += Object.keys(rec.days).length;
@@ -1064,83 +1318,136 @@
     try { const j = await res.json(); return (j && j.message) ? j.message : (res.statusText || ''); }
     catch(e){ return res.statusText || ''; }
   }
-
-  async function doSync(){
-    const cfg = readSyncInputs();
-    saveSyncConfig(cfg);
-
-    if(!cfg.pat){ syncMsg('PAT를 입력하세요', 'err'); return; }
-    if(!cfg.owner){ syncMsg('owner(계정명)를 입력하세요', 'err'); return; }
-    if(!cfg.repo){ syncMsg('레포명을 입력하세요', 'err'); return; }
-
-    $('sync-run').disabled = true;
-    syncMsg('동기화 중...', '');
-
-    try {
-      const local = collectRecord();
-      const localCount = recordEntryCount(local);
-      const content = toBase64(JSON.stringify(local, null, 2));
-      const encPath = cfg.path.split('/').map(encodeURIComponent).join('/');
-      const apiUrl = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encPath;
-      const headers = {
-        'Authorization': 'Bearer ' + cfg.pat,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
-      };
-
-      // 1) 기존 파일 sha 조회 (없으면 404 → 신규 생성)
-      let sha = null;
-      const getRes = await fetch(apiUrl + '?ref=' + encodeURIComponent(cfg.branch), { headers: headers });
-      if(getRes.ok){
-        const j = await getRes.json();
-        sha = j && j.sha ? j.sha : null;
-
-        // 가드: 폰이 비었는데 repo에 데이터가 있으면 덮어쓰기 차단 (빈 깡통으로 백업 날리는 사고 방지)
-        if(localCount === 0 && j && j.content){
-          let remoteCount = 0;
-          try { remoteCount = recordEntryCount(JSON.parse(fromBase64(j.content))); } catch(e){}
-          if(remoteCount > 0){
-            syncMsg('중단: 폰에 기록이 없는데 repo에는 ' + remoteCount + '일치 데이터가 있습니다. 덮어쓰지 마세요. GitHub의 ' + cfg.path + ' 내용을 복사해 "기록 → 반영"으로 가져오세요.', 'err');
-            return;
-          }
-        }
-      } else if(getRes.status !== 404){
-        syncMsg('조회 실패 (' + getRes.status + '): ' + await safeErr(getRes), 'err');
-        return;
-      }
-
-      // 2) PUT 으로 전체 덮어쓰기
-      const body = {
-        message: 'journal sync ' + dateKey(new Date()),
-        content: content,
-        branch: cfg.branch
-      };
-      if(sha) body.sha = sha;
-
-      const putRes = await fetch(apiUrl, {
-        method: 'PUT',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
-        body: JSON.stringify(body)
-      });
-      if(!putRes.ok){
-        syncMsg('동기화 실패 (' + putRes.status + '): ' + await safeErr(putRes), 'err');
-        return;
-      }
-
-      const pj = await putRes.json();
-      const commitSha = (pj && pj.commit && pj.commit.sha) ? pj.commit.sha.slice(0,7) : '?';
-      const now = new Date();
-      syncMsg('동기화 완료 · ' + commitSha + ' · ' + pad(now.getHours()) + ':' + pad(now.getMinutes()), 'ok');
-    } catch(e){
-      syncMsg('네트워크 오류: ' + (e && e.message ? e.message : e), 'err');
-    } finally {
-      $('sync-run').disabled = false;
-    }
+  function ghHeaders(cfg){
+    return { 'Authorization': 'Bearer ' + cfg.pat, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  }
+  function ghUrl(cfg, path){
+    const encPath = path.split('/').map(encodeURIComponent).join('/');
+    return 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encPath;
   }
 
-  $('btn-sync').addEventListener('click', openSyncModal);
-  $('sync-close').addEventListener('click', closeSyncModal);
-  $('sync-run').addEventListener('click', doSync);
+  // 한 파일 올리기 (sha 조회→PUT). 폰이 비었는데 repo에 데이터면 차단.
+  async function ghPutFile(cfg, path, jsonObj){
+    const apiUrl = ghUrl(cfg, path);
+    const headers = ghHeaders(cfg);
+    const localCount = recordEntryCount(jsonObj);
+    const content = toBase64(JSON.stringify(jsonObj, null, 2));
+    let sha = null;
+    const getRes = await fetch(apiUrl + '?ref=' + encodeURIComponent(cfg.branch), { headers: headers });
+    if(getRes.ok){
+      const j = await getRes.json();
+      sha = j && j.sha ? j.sha : null;
+      if(localCount === 0 && j && j.content){
+        let remoteCount = 0;
+        try { remoteCount = recordEntryCount(JSON.parse(fromBase64(j.content))); } catch(e){}
+        if(remoteCount > 0) throw new Error(path + ': 폰이 비었는데 repo에 ' + remoteCount + '건 — 덮어쓰기 차단(복구를 쓰세요)');
+      }
+    } else if(getRes.status !== 404){
+      throw new Error(path + ' 조회 실패 ' + getRes.status + ': ' + await safeErr(getRes));
+    }
+    const body = { message: path.replace(/\.json$/, '') + ' sync ' + dateKey(new Date()), content: content, branch: cfg.branch };
+    if(sha) body.sha = sha;
+    const putRes = await fetch(apiUrl, { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, headers), body: JSON.stringify(body) });
+    if(!putRes.ok) throw new Error(path + ' 올리기 실패 ' + putRes.status + ': ' + await safeErr(putRes));
+    const pj = await putRes.json();
+    return (pj && pj.commit && pj.commit.sha) ? pj.commit.sha.slice(0,7) : '?';
+  }
+
+  async function ghGetFile(cfg, path){
+    const res = await fetch(ghUrl(cfg, path) + '?ref=' + encodeURIComponent(cfg.branch), { headers: ghHeaders(cfg) });
+    if(res.status === 404) return null;
+    if(!res.ok) throw new Error(path + ' 조회 실패 ' + res.status + ': ' + await safeErr(res));
+    const j = await res.json();
+    if(!j || !j.content) return null;
+    try { return JSON.parse(fromBase64(j.content)); } catch(e){ throw new Error(path + ' 파싱 실패'); }
+  }
+
+  function validSyncCfg(cfg){
+    if(!cfg.pat){ toast('PAT를 입력하세요 (⚙ 설정)', 'err'); return false; }
+    if(!cfg.owner){ toast('owner를 입력하세요 (⚙ 설정)', 'err'); return false; }
+    if(!cfg.repo){ toast('레포명을 입력하세요', 'err'); return false; }
+    return true;
+  }
+
+  let syncBusy = false;
+  async function syncUp(cfg){
+    if(syncBusy) return;
+    if(!validSyncCfg(cfg)) return;
+    syncBusy = true;
+    toast('올리기 중…', '');
+    try {
+      await ghPutFile(cfg, cfg.routine_path, collectRecord());
+      await ghPutFile(cfg, cfg.study_path, collectStudy());
+      setKey('last_sync', new Date().toISOString());
+      updateLastSync();
+      const now = new Date();
+      toast('올리기 완료 · 2/2 · ' + pad(now.getHours()) + ':' + pad(now.getMinutes()), 'ok');
+    } catch(e){
+      toast('올리기 실패: ' + (e && e.message ? e.message : e), 'err');
+    } finally { syncBusy = false; }
+  }
+
+  async function syncDown(cfg){
+    if(syncBusy) return;
+    if(!validSyncCfg(cfg)) return;
+    const localCount = recordEntryCount(collectRecord()) + Object.keys(collectStudy().days).length;
+    if(localCount > 0 && !window.confirm('repo 데이터로 폰을 덮어씁니다. 폰의 현재 기록이 사라질 수 있어요. 계속할까요?')) return;
+    syncBusy = true;
+    toast('복구 중…', '');
+    try {
+      const r = await ghGetFile(cfg, cfg.routine_path);
+      const s = await ghGetFile(cfg, cfg.study_path);
+      let n = 0;
+      if(r){ applyRoutineData(r); n++; }
+      if(s){ applyStudy(s); n++; }
+      setKey('last_sync', new Date().toISOString());
+      updateLastSync();
+      reloadAll();
+      toast(n > 0 ? ('복구 완료 · ' + n + '/2') : '복구할 데이터가 repo에 없습니다', n > 0 ? 'ok' : 'err');
+    } catch(e){
+      toast('복구 실패: ' + (e && e.message ? e.message : e), 'err');
+    } finally { syncBusy = false; }
+  }
+
+  // ===== 설정(⚙) 화면 =====
+  function setMsg(text, kind){
+    const m = $('set-msg'); m.textContent = text; m.className = 'modal-msg' + (kind ? ' ' + kind : '');
+  }
+  function updateLastSync(){
+    const ls = getKey('last_sync');
+    $('set-lastsync').textContent = '마지막 동기화: ' + (ls ? ls.replace('T', ' ').slice(0, 16) : '없음');
+  }
+  function openSettings(){
+    const cfg = getSyncConfig();
+    $('set-owner').value = cfg.owner;
+    $('set-repo').value = cfg.repo;
+    $('set-branch').value = cfg.branch;
+    $('set-pat').value = cfg.pat;
+    $('set-routine-path').value = cfg.routine_path;
+    $('set-study-path').value = cfg.study_path;
+    setMsg('', '');
+    updateLastSync();
+    $('modal-settings').classList.remove('hidden');
+  }
+  function closeSettings(){
+    saveSyncConfig(readSyncInputs());
+    $('modal-settings').classList.add('hidden');
+  }
+
+  // ===== 하단 바 / 설정 wiring =====
+  $('nav-habit').addEventListener('click', () => showView('habit'));
+  $('nav-study').addEventListener('click', () => showView('study'));
+  $('nav-sync').addEventListener('click', () => {
+    const cfg = getSyncConfig();
+    if(!cfg.pat || !cfg.owner){ toast('먼저 ⚙ 설정에서 토큰을 입력하세요', 'err'); openSettings(); return; }
+    syncUp(cfg);
+  });
+  $('nav-settings').addEventListener('click', openSettings);
+  $('set-close').addEventListener('click', closeSettings);
+  $('set-up').addEventListener('click', () => { const cfg = readSyncInputs(); saveSyncConfig(cfg); syncUp(cfg); });
+  $('set-down').addEventListener('click', () => { const cfg = readSyncInputs(); saveSyncConfig(cfg); syncDown(cfg); });
+  $('set-raw-routine').addEventListener('click', () => openRawModal('routine'));
+  $('set-raw-study').addEventListener('click', () => openRawModal('study'));
 
   try {
     const cr = loadConfig();
@@ -1151,13 +1458,14 @@
     initTotalLiter();
     recomputeItemCounts();
 
-    renderDate();
-    renderChecks();
-    updateSummary();
-    renderCalendar();
-    updateCalNav();
+    // 스터디 초기화 (습관과 독립)
+    studyConfig = loadStudyConfig();
+    recomputeStudyTotal();
+
+    showView('habit');
     $('loading').classList.add('hidden');
     $('app').classList.remove('hidden');
+    $('navbar').classList.remove('hidden');
   } catch(e){
     $('loading').textContent = '오류: ' + (e && e.message ? e.message : '알 수 없음');
   }
