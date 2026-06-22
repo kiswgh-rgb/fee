@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#FFFFFF">
-<title>Fee — 일일 습관 트래커 v10.4</title>
+<title>Fee — 일일 습관 트래커 v10.5</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -294,6 +294,25 @@
     color: var(--text-secondary);
     font-size: 14px;
   }
+  .sync-field { margin-bottom: 10px; }
+  .sync-field label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  .sync-input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    box-sizing: border-box;
+    -webkit-appearance: none;
+  }
   .hidden { display: none; }
 </style>
 </head>
@@ -325,6 +344,7 @@
 
     <div class="record-bar">
       <button id="btn-record" type="button" class="record-btn">기록</button>
+      <button id="btn-sync" type="button" class="record-btn">동기화</button>
     </div>
   </div>
 
@@ -349,6 +369,47 @@
       </div>
     </div>
   </div>
+
+  <div id="modal-sync" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">GitHub 동기화</div>
+      <div class="modal-body">
+        <div class="modal-desc">
+          현재 일지 전체(기록 모달과 동일한 JSON)를 private 레포의 파일 하나에 덮어써 올립니다.
+          토큰은 이 기기 localStorage에만 저장되며 코드에는 남지 않습니다.
+          PAT는 대상 레포 Contents 쓰기 권한이 있는 fine-grained 토큰을 사용하세요.
+        </div>
+        <div class="sync-field">
+          <label for="sync-owner">owner (GitHub 계정명)</label>
+          <input id="sync-owner" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="예: kiswgh-rgb">
+        </div>
+        <div class="sync-field">
+          <label for="sync-repo">레포</label>
+          <input id="sync-repo" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="CHI_fee_data">
+        </div>
+        <div class="sync-field">
+          <label for="sync-path">파일 경로</label>
+          <input id="sync-path" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="journal.json">
+        </div>
+        <div class="sync-field">
+          <label for="sync-branch">브랜치</label>
+          <input id="sync-branch" class="sync-input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="main">
+        </div>
+        <div class="sync-field">
+          <label for="sync-pat">Personal Access Token</label>
+          <input id="sync-pat" class="sync-input" type="password" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" placeholder="github_pat_...">
+        </div>
+        <div id="sync-msg" class="modal-msg"></div>
+      </div>
+      <div class="modal-footer">
+        <span></span>
+        <div class="modal-footer-right">
+          <button id="sync-close" type="button" class="modal-btn">닫기</button>
+          <button id="sync-run" type="button" class="modal-btn primary">동기화</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -356,7 +417,7 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.4';
+  const CONFIG_VERSION = 'v10.5';
   const APP_VERSION = 'v10.3';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
@@ -930,6 +991,57 @@
     ta.focus();
     ta.select();
     try { ta.setSelectionRange(0, ta.value.length); } catch(e){}
+  });
+
+  // ===== GitHub 동기화 =====
+  // 설정은 신규 키 'sync'에만 저장 — 기존 day:/legacy:/config/total_liter 와 무관.
+  function getSyncConfig(){
+    const s = getKey('sync') || {};
+    return {
+      owner:  s.owner  || '',
+      repo:   s.repo   || 'CHI_fee_data',
+      path:   s.path   || 'journal.json',
+      branch: s.branch || 'main',
+      pat:    s.pat    || ''
+    };
+  }
+  function readSyncInputs(){
+    return {
+      owner:  $('sync-owner').value.trim(),
+      repo:   $('sync-repo').value.trim()   || 'CHI_fee_data',
+      path:   $('sync-path').value.trim()   || 'journal.json',
+      branch: $('sync-branch').value.trim() || 'main',
+      pat:    $('sync-pat').value.trim()
+    };
+  }
+  function saveSyncConfig(cfg){ setKey('sync', cfg); }
+
+  function syncMsg(text, kind){
+    const m = $('sync-msg');
+    m.textContent = text;
+    m.className = 'modal-msg' + (kind ? ' ' + kind : '');
+  }
+
+  function openSyncModal(){
+    const cfg = getSyncConfig();
+    $('sync-owner').value  = cfg.owner;
+    $('sync-repo').value   = cfg.repo;
+    $('sync-path').value   = cfg.path;
+    $('sync-branch').value = cfg.branch;
+    $('sync-pat').value    = cfg.pat;
+    syncMsg('', '');
+    $('modal-sync').classList.remove('hidden');
+  }
+  function closeSyncModal(){
+    saveSyncConfig(readSyncInputs());
+    $('modal-sync').classList.add('hidden');
+  }
+
+  $('btn-sync').addEventListener('click', openSyncModal);
+  $('sync-close').addEventListener('click', closeSyncModal);
+  $('sync-run').addEventListener('click', () => {
+    saveSyncConfig(readSyncInputs());
+    syncMsg('설정 저장됨', 'ok');
   });
 
   try {
