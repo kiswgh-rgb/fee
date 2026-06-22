@@ -3,8 +3,8 @@
 // 캐시는 파일(HTML/JS)만 다룸 — localStorage(일지 데이터)와는 완전히 별개.
 'use strict';
 
-var CACHE = 'fee-v10.5';
-var ASSETS = ['./', './index.html'];
+var CACHE = 'fee-v10.6';
+var ASSETS = ['./', './index.html', './icon-180.png'];
 
 self.addEventListener('install', function(e){
   self.skipWaiting();
