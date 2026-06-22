@@ -1044,6 +1044,19 @@
     for(let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
     return btoa(bin);
   }
+  function fromBase64(b64){
+    const bin = atob(String(b64).replace(/\s/g, ''));
+    const bytes = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  // 기록된 날 수 (day + legacy) — 빈 데이터 판별용
+  function recordEntryCount(rec){
+    let n = 0;
+    if(rec && rec.days   && typeof rec.days   === 'object') n += Object.keys(rec.days).length;
+    if(rec && rec.legacy && typeof rec.legacy === 'object') n += Object.keys(rec.legacy).length;
+    return n;
+  }
   async function safeErr(res){
     try { const j = await res.json(); return (j && j.message) ? j.message : (res.statusText || ''); }
     catch(e){ return res.statusText || ''; }
@@ -1061,7 +1074,9 @@
     syncMsg('동기화 중...', '');
 
     try {
-      const content = toBase64(JSON.stringify(collectRecord(), null, 2));
+      const local = collectRecord();
+      const localCount = recordEntryCount(local);
+      const content = toBase64(JSON.stringify(local, null, 2));
       const encPath = cfg.path.split('/').map(encodeURIComponent).join('/');
       const apiUrl = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + encPath;
       const headers = {
@@ -1076,6 +1091,16 @@
       if(getRes.ok){
         const j = await getRes.json();
         sha = j && j.sha ? j.sha : null;
+
+        // 가드: 폰이 비었는데 repo에 데이터가 있으면 덮어쓰기 차단 (빈 깡통으로 백업 날리는 사고 방지)
+        if(localCount === 0 && j && j.content){
+          let remoteCount = 0;
+          try { remoteCount = recordEntryCount(JSON.parse(fromBase64(j.content))); } catch(e){}
+          if(remoteCount > 0){
+            syncMsg('중단: 폰에 기록이 없는데 repo에는 ' + remoteCount + '일치 데이터가 있습니다. 덮어쓰지 마세요. GitHub의 ' + cfg.path + ' 내용을 복사해 "기록 → 반영"으로 가져오세요.', 'err');
+            return;
+          }
+        }
       } else if(getRes.status !== 404){
         syncMsg('조회 실패 (' + getRes.status + '): ' + await safeErr(getRes), 'err');
         return;
