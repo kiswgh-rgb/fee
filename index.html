@@ -355,7 +355,7 @@
     touch-action: manipulation; letter-spacing: 0.02em;
   }
   .nav-btn.active { color: var(--accent); }
-  .nav-btn.nav-icon { flex: 0 0 48px; font-size: 18px; font-weight: 400; }
+  .nav-btn.nav-icon { flex: 0 0 46px; font-size: 12px; }
   .nav-btn:active { background: var(--bg-secondary); }
   .toast {
     position: fixed; left: 50%; transform: translateX(-50%) translateY(20px);
@@ -428,7 +428,7 @@
     <button id="nav-habit" type="button" class="nav-btn active">F</button>
     <button id="nav-study" type="button" class="nav-btn">S</button>
     <button id="nav-sync" type="button" class="nav-btn">Sync</button>
-    <button id="nav-settings" type="button" class="nav-btn nav-icon" aria-label="설정">⚙</button>
+    <button id="nav-settings" type="button" class="nav-btn nav-icon" aria-label="설정">설정</button>
   </nav>
   <div id="toast" class="toast"></div>
 
@@ -455,7 +455,7 @@
 
   <div id="modal-settings" class="modal-backdrop hidden">
     <div class="modal">
-      <div class="modal-header">⚙ 동기화 설정</div>
+      <div class="modal-header">동기화 설정</div>
       <div class="modal-body">
         <div class="modal-desc">
           PAT는 이 기기 localStorage에만 저장되며 코드에는 남지 않습니다.
@@ -1363,8 +1363,8 @@
   }
 
   function validSyncCfg(cfg){
-    if(!cfg.pat){ toast('PAT를 입력하세요 (⚙ 설정)', 'err'); return false; }
-    if(!cfg.owner){ toast('owner를 입력하세요 (⚙ 설정)', 'err'); return false; }
+    if(!cfg.pat){ toast('PAT를 입력하세요 (설정)', 'err'); return false; }
+    if(!cfg.owner){ toast('owner를 입력하세요 (설정)', 'err'); return false; }
     if(!cfg.repo){ toast('레포명을 입력하세요', 'err'); return false; }
     return true;
   }
@@ -1439,7 +1439,7 @@
   $('nav-study').addEventListener('click', () => showView('study'));
   $('nav-sync').addEventListener('click', () => {
     const cfg = getSyncConfig();
-    if(!cfg.pat || !cfg.owner){ toast('먼저 ⚙ 설정에서 토큰을 입력하세요', 'err'); openSettings(); return; }
+    if(!cfg.pat || !cfg.owner){ toast('먼저 설정에서 토큰을 입력하세요', 'err'); openSettings(); return; }
     syncUp(cfg);
   });
   $('nav-settings').addEventListener('click', openSettings);
