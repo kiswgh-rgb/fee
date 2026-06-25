@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.6</title>
+<title>Fee v10.7</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -22,6 +22,8 @@
     --accent: #185FA5;
     --accent-dark: #0C447C;
     --accent-bg: #E6F1FB;
+    --warn: #B33A2C;
+    --amber: #C98A1E;
     --radius-md: 8px;
     --radius-lg: 12px;
     --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", "Noto Sans KR", "Helvetica Neue", sans-serif;
@@ -341,8 +343,22 @@
   }
   .density-btn.active { background: var(--accent-bg); border-color: transparent; outline: 1.5px solid var(--accent); outline-offset: -1.5px; color: var(--accent-dark); font-weight: 600; }
   .density-btn:not(.active):active { background: var(--bg-secondary); }
-  .study-summary { text-align: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+  .study-summary { text-align: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
   .study-summary span { color: var(--accent); font-weight: 600; }
+  /* 공부 속도계(반원) — 달력 바로 위 */
+  .study-gauge {
+    display: flex; flex-direction: column; align-items: center;
+    border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+    background: var(--bg-primary); padding: 12px 14px 10px; margin-bottom: 16px;
+  }
+  .study-gauge.empty { display: none; }
+  .study-gauge .sg-top { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
+  .study-gauge .sg-name { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .study-gauge .sg-date { font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+  .study-gauge .sg-nums { display: flex; justify-content: space-between; width: 100%; margin-top: 6px; }
+  .study-gauge .sg-nums b { font-size: 17px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .study-gauge .sg-svg { width: 230px; height: 131px; display: block; }
+  .study-gauge .sg-pct { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: -6px; }
   .navbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
     display: flex; max-width: 380px; margin: 0 auto;
@@ -411,6 +427,7 @@
         <button id="density-3" type="button" class="density-btn">상</button>
       </div>
       <div class="study-summary">오늘 <span id="study-today">0.0</span>h · 누적 <span id="study-total">0</span>h</div>
+      <div id="study-gauge" class="study-gauge empty"></div>
     </div>
 
     <div class="calendar">
@@ -514,8 +531,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.6';
-  const APP_VERSION = 'v10.6';
+  const CONFIG_VERSION = 'v10.7';
+  const APP_VERSION = 'v10.7';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1073,7 +1090,14 @@
     subjects: ['세법학','회계학','재정학','행정소송법'],
     hours_step: 0.5, hours_min: 0, hours_max: 8,
     density_map: { '1':'하', '2':'중', '3':'상' },
-    exams: [ { name: '1차', date: '2027-04-25' } ]
+    // 속도계 baseline (HQ plans/semu_master.json 에서 옮긴 정적 상수 — 8월 재보정 시 숫자만 갱신)
+    // milestones.cum = 그 날짜까지 app누적 순공 목표(시간), weekly_cap = 주 절대상한
+    exams: [ { name: '1차', date: '2027-04-25', weekly_cap: 36, milestones: [
+      { phase: 1, end: '2026-08-07', cum: 222 },
+      { phase: 2, end: '2026-11-01', cum: 444 },
+      { phase: 3, end: '2027-01-26', cum: 666 },
+      { phase: 4, end: '2027-04-25', cum: 900 }
+    ] } ]
   };
   const STUDY_DENSITY_FACTOR = { 1: 0.8, 2: 1.0, 3: 1.2 };
   let currentView = 'habit';
@@ -1097,6 +1121,13 @@
     if(typeof c.hours_max !== 'number'){ c.hours_max = 8; updated = true; }
     if(!c.density_map){ c.density_map = DEFAULT_STUDY_CONFIG.density_map; updated = true; }
     if(!Array.isArray(c.exams) || !c.exams.length){ c.exams = DEFAULT_STUDY_CONFIG.exams.slice(); updated = true; }
+    // 속도계 baseline 비파괴 보정: exams[0]에 weekly_cap/milestones 누락 시에만 채움
+    const dex = DEFAULT_STUDY_CONFIG.exams[0];
+    const ex0 = c.exams[0];
+    if(ex0){
+      if(typeof ex0.weekly_cap !== 'number'){ ex0.weekly_cap = dex.weekly_cap; updated = true; }
+      if(!Array.isArray(ex0.milestones) || !ex0.milestones.length){ ex0.milestones = JSON.parse(JSON.stringify(dex.milestones)); updated = true; }
+    }
     if(updated) setKey('study_config', c);
     return c;
   }
@@ -1155,6 +1186,76 @@
   function updateStudySummary(){
     $('study-today').textContent = studyDayHours(studyDay).toFixed(1);
     $('study-total').textContent = String(Math.round(studyTotal * 10) / 10);
+    renderStudyGauge();
+  }
+
+  // ===== 공부 속도계 =====
+  // 내 페이스 = app누적 ÷ 경과일(첫 기록~오늘),  need = (구간목표 − 누적) ÷ 남은일,  cap = 주상한/7
+  function parseDateKey(dk){
+    const p = String(dk).split('-');
+    const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  function studyEarliestKey(){
+    let min = null;
+    listKeys('study:').forEach(k => {
+      if(studyDayHours(getKey(k)) > 0){ const dk = k.slice(6); if(!min || dk < min) min = dk; }
+    });
+    return min;
+  }
+  function paceColor(my, need){
+    if(my >= need - 0.001) return 'var(--accent)';
+    if(my >= need * 0.8)   return 'var(--amber)';
+    return 'var(--warn)';
+  }
+  function renderStudyGauge(){
+    const host = $('study-gauge');
+    if(!host) return;
+    const ex = studyConfig && studyConfig.exams && studyConfig.exams[0];
+    if(!ex || !Array.isArray(ex.milestones) || !ex.milestones.length){ host.className = 'study-gauge empty'; host.innerHTML = ''; return; }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    // 현재 구간 = 마감일이 오늘 이후인 첫 마일스톤 (없으면 마지막)
+    let ms = null;
+    for(let i = 0; i < ex.milestones.length; i++){ if(parseDateKey(ex.milestones[i].end).getTime() >= today.getTime()){ ms = ex.milestones[i]; break; } }
+    if(!ms) ms = ex.milestones[ex.milestones.length - 1];
+    const daysLeft = Math.max(1, Math.round((parseDateKey(ms.end) - today) / 86400000));
+    const cum = studyTotal;
+    const remain = Math.max(0, ms.cum - cum);
+    const need = remain > 0 ? remain / daysLeft : 0.01;
+    const earliest = studyEarliestKey();
+    const elapsed = earliest ? Math.max(1, Math.round((today - parseDateKey(earliest)) / 86400000) + 1) : 1;
+    const my = cum / elapsed;
+    const cap = (ex.weekly_cap || 36) / 7;
+    const ratio = my / need;
+    const col = paceColor(my, need);
+    // 반원 게이지 (0 → cap)
+    const cx = 100, cy = 98, r = 82;
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const angOf = v => Math.PI * (1 - clamp(v / cap, 0, 1));
+    const polar = (a, rr) => [cx + Math.cos(a) * rr, cy - Math.sin(a) * rr];
+    const arc = (a0, a1, c) => {
+      const [x0, y0] = polar(a0, r), [x1, y1] = polar(a1, r);
+      const large = (a0 - a1) > Math.PI ? 1 : 0;
+      return `<path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round"/>`;
+    };
+    const needA = angOf(need);
+    const [nx, ny] = polar(angOf(my), r - 12);
+    const [tx0, ty0] = polar(needA, r - 14), [tx1, ty1] = polar(needA, r + 5);
+    const phaseLbl = ms.phase ? (ex.name || '1차') + ' ' + ms.phase + '구간' : (ex.name || '1차');
+    const pctTxt = remain > 0 ? Math.round(ratio * 100) + '%' : '달성';
+    host.className = 'study-gauge';
+    host.innerHTML =
+      `<div class="sg-top"><span class="sg-name">${phaseLbl}</span><span class="sg-date">~ ${ms.end}</span></div>` +
+      `<div class="sg-nums"><b style="color:${col}">${my.toFixed(2)}</b><b>${need.toFixed(2)}</b></div>` +
+      `<svg class="sg-svg" viewBox="0 0 200 114">` +
+        arc(Math.PI, 0.001, 'var(--bg-tertiary)') +
+        (needA > 0.02 ? arc(needA, 0.001, 'var(--accent-bg)') : '') +
+        `<line x1="${tx0.toFixed(1)}" y1="${ty0.toFixed(1)}" x2="${tx1.toFixed(1)}" y2="${ty1.toFixed(1)}" stroke="var(--text-primary)" stroke-width="2"/>` +
+        `<line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${col}" stroke-width="4" stroke-linecap="round"/>` +
+        `<circle cx="${cx}" cy="${cy}" r="5.5" fill="${col}"/>` +
+      `</svg>` +
+      `<div class="sg-pct" style="color:${col}">${pctTxt}</div>`;
   }
   function renderDensity(){
     [1,2,3].forEach(lv => { $('density-' + lv).classList.toggle('active', studyDay.density === lv); });

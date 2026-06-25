@@ -97,7 +97,26 @@ study:YYYY-MM-DD        // { hours:{ '세법학':2.5, ... }, density: 1|2|3|null
 - `sync` 키 확장: `{ owner, repo, branch, pat, routine_path:'daily_routine.json', study_path:'semu_study.json' }`
   (구 `path:'journal.json'` 저장값은 로드 시 마이그레이션).
 
-## 앱 이름/아이콘 (v10.6)
-- `<title>` = `Fee v10.6`, 홈화면 라벨 = `Fee` (`apple-mobile-web-app-title`).
+## 앱 이름/아이콘 (v10.6~)
+- `<title>` = `Fee v10.7`, 홈화면 라벨 = `Fee` (`apple-mobile-web-app-title`).
 - 아이콘 = `icon-180.png` (파랑 #185FA5 배경 + 흰 `CHI`/`feedback`), `apple-touch-icon`.
 - 아이콘·라벨은 **재등록 시점에 캐시** — 새로 보려면 홈화면 1회 재등록 필요.
+
+---
+
+# v10.7 — 공부 속도계 (Study 페이스메이커)
+
+S 뷰에서 `오늘/누적` 줄 아래·달력 위에 **반원 게이지**(`#study-gauge`, `renderStudyGauge()`).
+
+## 계산 (실제 `study:*` 데이터만 소비, 별도 저장 없음)
+- 내 페이스 = `누적순공(studyTotal) ÷ 경과일(첫 study 기록일~오늘)` — 바늘 + 왼쪽 숫자
+- need(필요 페이스) = `(현재 구간 cum목표 − 누적) ÷ 남은일` — 검은 틱 + 오른쪽 숫자. 구간은 오늘 지난 첫 마일스톤 자동 선택
+- cap(천장) = `weekly_cap ÷ 7` = 반원 오른쪽 끝(0→cap 스케일, 못 넘음)
+- 색: 내≥need 파랑(`--accent`) / ≥80% 앰버 / 그 외 빨강(`--warn`). 가운데 `%`(`remain≤0`이면 `달성`)
+- 렌더 훅: `updateStudySummary()` 안 → 시간 ±편집 시 실시간 갱신
+
+## ★ 목표 baseline = HQ 원천, fee엔 정적 상수로만
+`study_config.exams[0]`에 `weekly_cap` + `milestones:[{phase,end,cum}]` (cum = 그 날짜까지 app누적 순공목표 h).
+- **원천 = `inner_data/plans/semu_master.json`** (HQ가 사용자 수험계획으로 산출). fee는 런타임에 안 읽음 — 거기서 나온 숫자를 여기 상수로 옮길 뿐.
+- 8월 진단 등으로 plan 재보정되면 → **이 상수(900·마일스톤·cap)만 수정**하면 됨 (설계된 워크플로).
+- `loadStudyConfig()`가 **누락 시에만 백필**(비파괴) — `study:*` 일별 기록 절대 무손상. 누적은 전 `study:*` 합산이라 과목 변경과 무관하게 연속.
