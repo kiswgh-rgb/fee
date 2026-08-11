@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.7</title>
+<title>Fee v10.8</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -531,8 +531,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.7';
-  const APP_VERSION = 'v10.7';
+  const CONFIG_VERSION = 'v10.8';
+  const APP_VERSION = 'v10.8';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -541,7 +541,7 @@
   const DEFAULT_CONFIG = {
     version: CONFIG_VERSION,
     items: [
-      { name: '수면의식', weight: 40 },
+      { name: '아침공부', weight: 40 },
       { name: '저녁공부', weight: 30 },
       { name: '케틀벨',   weight: 30 }
     ],
@@ -613,6 +613,20 @@
     return items.map(i => `${i.name}:${i.weight}`).join('|');
   }
 
+  // === 항목 '이름만' 바꾸는 리네임 (v10.8: 수면의식 → 아침공부) ===
+  // 순서·가중치는 그대로라 day:*.checks 의 인덱스 의미가 안 바뀐다 →
+  // 시그니처 비교 전에 저장된 config 의 이름을 갈아끼워 초기화 경로를 타지 않게 한다.
+  const ITEM_RENAMES = { '수면의식': '아침공부' };
+
+  function applyItemRenames(items){
+    const done = [];
+    items.forEach(it => {
+      const nn = ITEM_RENAMES[it.name];
+      if(nn && nn !== it.name){ done.push(`${it.name} → ${nn}`); it.name = nn; }
+    });
+    return done;
+  }
+
   function runLegacyImport(){
     if(getKey('legacy_imported')) return false;
 
@@ -664,6 +678,9 @@
       return { config: c, note: null };
     }
 
+    // 리네임을 시그니처 비교보다 먼저 — 이름만 바뀐 건 '항목 변경'이 아니다(데이터 보존)
+    const renamed = c.items ? applyItemRenames(c.items) : [];
+
     const oldSig = c.items ? itemsSignature(c.items) : '';
     const newSig = itemsSignature(DEFAULT_CONFIG.items);
 
@@ -679,6 +696,7 @@
     }
 
     let updated = false;
+    if(renamed.length){ updated = true; migrationNote = `항목 이름 변경 — ${renamed.join(', ')}`; }
     if(c.version !== CONFIG_VERSION){ c.version = CONFIG_VERSION; updated = true; }
     if(c.bucket_goal !== DEFAULT_CONFIG.bucket_goal){
       const oldGoal = c.bucket_goal;
