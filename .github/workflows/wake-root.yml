@@ -1,0 +1,10 @@
+name: wake-root
+on: { push: { branches: [main, master] } }
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -sf -X POST -H "Authorization: Bearer ${{ secrets.WORKSPACE_PAT }}" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/kiswgh-rgb/projects-workspace/dispatches \
+            -d "{\"event_type\":\"subrepo-push\",\"client_payload\":{\"repo\":\"${{ github.event.repository.name }}\"}}"
