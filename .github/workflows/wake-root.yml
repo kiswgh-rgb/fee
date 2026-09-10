@@ -4,7 +4,19 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
+      # PAT 가 비었거나 만료돼도 종전 `curl -sf` 는 bare exit 22 로만 죽어 원인이 안 보였다.
+      # 알림은 실패 사실이 아니라 고칠 자리를 가리켜야 한다 — HTTP 코드·응답본문을 찍는다.
+      # ★줄잇기(역슬래시) 쓰지 말 것 — 이 파일은 10곳에 바이트 동일 복제된다(check_ci_workflows C1).
       - run: |
-          curl -sf -X POST -H "Authorization: Bearer ${{ secrets.WORKSPACE_PAT }}" -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/kiswgh-rgb/projects-workspace/dispatches \
-            -d "{\"event_type\":\"subrepo-push\",\"client_payload\":{\"repo\":\"${{ github.event.repository.name }}\"}}"
+          if [ -z "${{ secrets.WORKSPACE_PAT }}" ]; then
+            echo "::error::WORKSPACE_PAT 이 이 repo 의 Actions Secrets 에 없다 — 루트 CI 가 깨어나지 못한다"
+            exit 1
+          fi
+          api=https://api.github.com/repos/kiswgh-rgb/projects-workspace/dispatches
+          payload='{"event_type":"subrepo-push","client_payload":{"repo":"${{ github.event.repository.name }}"}}'
+          code=$(curl -s -o /tmp/dispatch.out -w '%{http_code}' -X POST -H "Authorization: Bearer ${{ secrets.WORKSPACE_PAT }}" -H "Accept: application/vnd.github+json" "$api" -d "$payload")
+          if [ "$code" != "204" ]; then
+            echo "::error::루트 dispatch 실패 HTTP $code (401/403 이면 WORKSPACE_PAT 만료·권한부족)"
+            cat /tmp/dispatch.out
+            exit 1
+          fi
