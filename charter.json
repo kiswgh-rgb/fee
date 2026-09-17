@@ -1,0 +1,15 @@
+{
+  "schema": "charter/1",
+  "id": "fee",
+  "folder": "fee/",
+  "kind": "repo",
+  "role": "일일 습관 트래커 — 정적 단일 HTML 앱 (public)",
+  "규약": "CLAUDE.md",
+  "원격": "github.com/kiswgh-rgb/fee",
+  "분기": "main",
+  "성격": "일일 습관 트래커 — 정적 단일 HTML 앱 (public)",
+  "정본": [],
+  "소비": [],
+  "기록창구": [],
+  "게이트_추가": []
+}
