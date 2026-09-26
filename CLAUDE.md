@@ -45,11 +45,11 @@
 
 ## 동기화 기능 (→ private 레포 CHI_fee_data)
 - "동기화" 버튼: `collectRecord()`의 `fee-record-1` JSON을 GitHub Contents API로
-  `CHI_fee_data/journal.json`에 PUT(전체 덮어쓰기). GET으로 sha 조회 후 충돌 없이 덮어씀.
+  `CHI_fee_data/daily_routine.json`에 PUT(전체 덮어쓰기). GET으로 sha 조회 후 충돌 없이 덮어씀.
 - 설정(owner/repo/path/branch/**PAT**)은 localStorage 키 `sync`에만 저장.
   **PAT는 코드에 하드코딩 금지** — `fee` 레포는 public이라 유출 위험.
 - 방향: 폰 → repo **한 방향**. 빈-데이터 가드 있음: 폰이 비었는데 repo에 데이터가 있으면 PUT 차단
-  (빈 깡통으로 백업을 날리는 사고 방지). 복구는 GitHub의 journal.json을 복사해 "기록 → 반영".
+  (빈 깡통으로 백업을 날리는 사고 방지). 복구는 GitHub의 daily_routine.json을 복사해 "기록 → 반영".
 
 ## 제약
 - `fetch` / `navigator.clipboard`는 HTTPS(github.io) 또는 localhost에서만 동작. `file://` 테스트 금지.
