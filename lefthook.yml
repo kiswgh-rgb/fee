@@ -1,0 +1,10 @@
+# 커밋 검사 — 정본 = 워크스페이스 루트 decision_guard.py · check_ps1_bom.py (경위 = 루트 DECISIONS.md 2026-09-28 차별화 3지표 강화)
+pre-commit:
+  commands:
+    ps1-bom:
+      glob: "*.ps1"
+      run: python ../check_ps1_bom.py {staged_files}
+commit-msg:
+  commands:
+    decision:
+      run: python ../decision_guard.py {1}
