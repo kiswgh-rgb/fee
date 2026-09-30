@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "command": "python -c \"import os,sys,runpy; f=os.path.join(os.environ.get('CLAUDE_PROJECT_DIR') or os.getcwd(),'..','ws_hooks.py'); sys.exit(0) if not os.path.isfile(f) else (sys.argv.__setitem__(slice(None),[f,'--no-verify-guard']), runpy.run_path(f,run_name='__main__'))\""
+          }
+        ]
+      }
+    ]
+  }
+}
