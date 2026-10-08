@@ -30,7 +30,8 @@
 ### CONFIG_VERSION 올리기는 안전
 `CONFIG_VERSION` 문자열만 바꾸는 건 `c.version` 필드만 갱신할 뿐 데이터를 지우지 않는다.
 버전업 시 체크리스트:
-- ✅ `CONFIG_VERSION`·`APP_VERSION` 갱신 (+ `<title>`, `sw.js`의 `CACHE` 이름도 맞춰 올리면 캐시 깔끔)
+- ✅ `CONFIG_VERSION`·`APP_VERSION`·`<title>`·`sw.js` `CACHE` 이름 **넷 다** 올린다(sw.js 바이트가 바뀌어야 폰 SW 가 갱신된다)
+- ✅ ★재발간 = 폰 캐시까지: `sw.js` fetch 의 `cache:'no-cache'` 유지(빼면 Pages max-age=600 로 최대 10분 옛 화면) · push 후 Pages 배포 완료 + 라이브 `sw.js` CACHE 이름 확인까지가 끝
 - ❌ `DEFAULT_CONFIG.items` 배열(이름/가중치)은 건드리지 않기
 - ✅ `loadConfig()` 마이그레이션 경로가 기존 데이터를 보존하는지 확인
 
