@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.8</title>
+<title>Fee v10.9</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -165,6 +165,8 @@
     color: var(--text-tertiary);
     padding: 2px 0;
   }
+  .cal-weekday.sun { color: #D32F2F; }
+  .cal-weekday.sat { color: #1565C0; }
   .cal-cell {
     aspect-ratio: 1;
     min-height: 32px;
@@ -345,7 +347,8 @@
   .density-btn:not(.active):active { background: var(--bg-secondary); }
   .study-summary { text-align: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
   .study-summary span { color: var(--accent); font-weight: 600; }
-  /* 공부 속도계(반원) — 달력 바로 위 */
+  #view-study .calendar { margin-bottom: 12px; }
+  /* 공부 속도계(반원) — S 뷰에선 달력 바로 아래 */
   .study-gauge {
     display: flex; flex-direction: column; align-items: center;
     border: 0.5px solid var(--border); border-radius: var(--radius-lg);
@@ -430,7 +433,7 @@
       <div id="study-gauge" class="study-gauge empty"></div>
     </div>
 
-    <div class="calendar">
+    <div id="calendar" class="calendar">
       <div class="cal-header">
         <button id="cal-prev" type="button" class="cal-nav" aria-label="이전 달">‹</button>
         <div id="cal-title" class="cal-title">—</div>
@@ -442,8 +445,8 @@
   </div>
 
   <nav id="navbar" class="navbar hidden">
-    <button id="nav-habit" type="button" class="nav-btn active">F</button>
     <button id="nav-study" type="button" class="nav-btn">S</button>
+    <button id="nav-habit" type="button" class="nav-btn active">F</button>
     <button id="nav-sync" type="button" class="nav-btn">Sync</button>
     <button id="nav-settings" type="button" class="nav-btn nav-icon" aria-label="설정">설정</button>
   </nav>
@@ -531,8 +534,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.8';
-  const APP_VERSION = 'v10.8';
+  const CONFIG_VERSION = 'v10.9';
+  const APP_VERSION = 'v10.9';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -868,16 +871,19 @@
     return { bg: '#1A1A1A', fg: '#FFFFFF', stage: 4 };
   }
 
+  // 일=빨강·토=파랑 — 진한 칸(흰 글자 단계)에선 밝은 톤으로 대비 유지
+  const WEEKEND_FG = { '0': ['#D32F2F', '#FF8A80'], '6': ['#1565C0', '#90CAF9'] };
   function applyCellStyle(cell, r){
     const s = densityStyle(r);
+    const we = WEEKEND_FG[cell.dataset.wd];
     if(s.bg){
       cell.style.background = s.bg;
       cell.style.borderColor = 'transparent';
-      cell.style.color = s.fg;
+      cell.style.color = we ? we[s.stage >= 3 ? 1 : 0] : s.fg;
     } else {
       cell.style.background = 'var(--bg-primary)';
       cell.style.borderColor = 'var(--border)';
-      cell.style.color = 'var(--text-primary)';
+      cell.style.color = we ? we[0] : 'var(--text-primary)';
     }
   }
 
@@ -910,9 +916,9 @@
 
     const wd = $('cal-weekdays');
     if(!wd.hasChildNodes()){
-      ['월','화','수','목','금','토','일'].forEach(w => {
+      ['일','월','화','수','목','금','토'].forEach((w, i) => {
         const el = document.createElement('div');
-        el.className = 'cal-weekday';
+        el.className = 'cal-weekday' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '');
         el.textContent = w;
         wd.appendChild(el);
       });
@@ -922,7 +928,7 @@
     grid.innerHTML = '';
     const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
     const last  = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0);
-    const firstWd = (first.getDay() + 6) % 7;
+    const firstWd = first.getDay();
     const today = new Date(); today.setHours(0,0,0,0);
 
     for(let i = 0; i < firstWd; i++){
@@ -945,6 +951,7 @@
         (isSel ? ' selected' : '') +
         (isTod && !isSel ? ' today' : '');
       cell.dataset.calKey = k;
+      cell.dataset.wd = String(d.getDay());
       cell.textContent = String(day);
 
       if(!before && !future){
@@ -1374,6 +1381,9 @@
     $('view-study').classList.toggle('hidden', habit);
     $('nav-habit').classList.toggle('active', habit);
     $('nav-study').classList.toggle('active', !habit);
+    // 공용 달력 위치: F = 맨 아래 / S = 계기판 위(요약 줄 아래)
+    if(habit) $('app').appendChild($('calendar'));
+    else $('view-study').insertBefore($('calendar'), $('study-gauge'));
     if(habit){ renderDate(); renderChecks(); updateSummary(); }
     else { renderStudyDate(); renderStudy(); }
     renderCalendar();
