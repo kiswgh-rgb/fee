@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.11</title>
+<title>Fee v10.12</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -187,7 +187,7 @@
   .cal-cell.disabled { opacity: 0.35; pointer-events: none; }
   .cal-cell.selected { outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
   /* 오늘 = 칸 바깥 굵은 테두리(진한 칸에서도 보이게) · 선택까지 겹치면 파랑 */
-  .cal-cell.today { outline: 2.5px solid var(--text-primary); outline-offset: 1px; font-weight: 800; }
+  .cal-cell.today { outline: 2px solid var(--text-primary); outline-offset: 1px; font-weight: 800; }
   .cal-cell.today.selected { outline-color: var(--accent); }
   .cal-cell.blank { background: transparent; border: none; pointer-events: none; }
   .record-bar {
@@ -338,15 +338,6 @@
   }
   .study-step:disabled { opacity: 0.3; }
   .study-step:not(:disabled):active { background: var(--bg-tertiary); }
-  .study-density { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-  .study-density-label { font-size: 13px; color: var(--text-secondary); margin-right: 2px; }
-  .density-btn {
-    flex: 1; padding: 10px 0; font-size: 14px; font-family: inherit;
-    border: 0.5px solid var(--border); border-radius: 8px; background: var(--bg-primary); color: var(--text-secondary);
-    cursor: pointer; touch-action: manipulation;
-  }
-  .density-btn.active { background: var(--accent-bg); border-color: transparent; outline: 1.5px solid var(--accent); outline-offset: -1.5px; color: var(--accent-dark); font-weight: 600; }
-  .density-btn:not(.active):active { background: var(--bg-secondary); }
   .study-summary { text-align: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
   .study-summary span { color: var(--accent); font-weight: 600; }
   #view-study .calendar { margin-bottom: 12px; }
@@ -425,12 +416,6 @@
 
     <div id="view-study" class="hidden">
       <div id="study-cards" class="study-cards"></div>
-      <div class="study-density">
-        <span class="study-density-label">밀도</span>
-        <button id="density-1" type="button" class="density-btn">하</button>
-        <button id="density-2" type="button" class="density-btn">중</button>
-        <button id="density-3" type="button" class="density-btn">상</button>
-      </div>
       <div class="study-summary">오늘 <span id="study-today">0.0</span>h · 누적 <span id="study-total">0</span>h</div>
       <div id="study-gauge" class="study-gauge empty"></div>
     </div>
@@ -536,8 +521,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.11';
-  const APP_VERSION = 'v10.11';
+  const CONFIG_VERSION = 'v10.12';
+  const APP_VERSION = 'v10.12';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1284,9 +1269,6 @@
       `</svg>` +
       `<div class="sg-pct" style="color:${col}">${pctTxt}</div>`;
   }
-  function renderDensity(){
-    [1,2,3].forEach(lv => { $('density-' + lv).classList.toggle('active', studyDay.density === lv); });
-  }
 
   function renderStudy(){
     studyDay = loadStudyDay(viewDate);
@@ -1331,19 +1313,8 @@
       refresh();
       wrap.appendChild(row);
     });
-    renderDensity();
     updateStudySummary();
   }
-
-  function setDensity(lv){
-    studyDay = loadStudyDay(viewDate);
-    studyDay.density = (studyDay.density === lv) ? null : lv;
-    saveStudyDay(viewDate, studyDay);
-    renderDensity();
-    paintCalCell(viewDate);
-    haptic();
-  }
-  [1,2,3].forEach(lv => { $('density-' + lv).addEventListener('click', () => setDensity(lv)); });
 
   function collectStudy(){
     const data = { format: 'semu-study-1', exported_at: new Date().toISOString(), app_version: APP_VERSION,
