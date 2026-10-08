@@ -3,7 +3,7 @@
 // 캐시는 파일(HTML/JS)만 다룸 — localStorage(일지 데이터)와는 완전히 별개.
 'use strict';
 
-var CACHE = 'fee-v10.10';
+var CACHE = 'fee-v10.11';
 var ASSETS = ['./', './index.html', './icon-180.png'];
 
 self.addEventListener('install', function(e){
@@ -31,8 +31,10 @@ self.addEventListener('fetch', function(e){
   if(url.origin !== self.location.origin) return;
 
   // network-first: 항상 새 버전을 먼저 받아오고, 성공하면 캐시 갱신. 실패 시에만 캐시 사용.
+  // no-cache = 브라우저 HTTP 캐시(Pages max-age=600)도 서버에 재확인 — 없으면 재발간 후 최대 10분 옛 화면
+  // (navigate 요청은 init 과 함께 Request 재구성 불가 → url 로 다시 부른다)
   e.respondWith(
-    fetch(req).then(function(res){
+    fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(function(res){
       if(res && res.ok){
         var copy = res.clone();
         caches.open(CACHE).then(function(c){ c.put(req, copy); }).catch(function(){});
