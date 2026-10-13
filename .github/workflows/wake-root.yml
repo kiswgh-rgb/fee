@@ -1,5 +1,7 @@
 name: wake-root
-on: { push: { branches: [main, master] } }
+# 수동 단추 — push 마다 깨우면 하위 1분 + 루트 run 이 커밋 수만큼 나가 무료분을 월 중순에 다 쓴다(루트 DECISIONS 2026-10-13).
+# 루트 CI 는 하루 두 번 예약으로 전 repo 를 본다. 이 repo 만 지금 보고 싶을 때 Actions 탭에서 Run workflow.
+on: { workflow_dispatch: {} }
 jobs:
   dispatch:
     runs-on: ubuntu-latest
