@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.21</title>
+<title>Fee v10.22</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -526,8 +526,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.21';
-  const APP_VERSION = 'v10.21';
+  const CONFIG_VERSION = 'v10.22';
+  const APP_VERSION = 'v10.22';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1220,7 +1220,7 @@
   // 구간 기준: 내 페이스 = 구간 순공 ÷ 구간 경과일,  기준 = 구간 경과일의 평일·주말 기준 평균,  cap = 주상한/7(초맥시멈)
   // 오늘은 기준만큼 채운 비율로만 경과일에 넣는다 — 하루가 안 끝났는데 미달로 보이지 않게
   // 하루 기준(사용자 2026-10-20 · 평일 4·주말 8 = 초맥시멈 = weekly_cap) · since = 이 기준을 세운 새 루틴 시작일 — 그 전 날짜엔 소급하지 않는다
-  const STUDY_PACE = { weekday: 3.5, weekend: 7, since: '2026-10-19' };
+  const STUDY_PACE = { weekday: 3.5, weekend: 7, since: '2026-10-18' };  // since = 새 루틴이 든 주의 일요일(이번 주 줄과 같은 날부터)
   function parseDateKey(dk){
     const p = String(dk).split('-');
     const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
