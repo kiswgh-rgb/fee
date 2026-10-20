@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.23</title>
+<title>Fee v10.24</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -526,8 +526,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.23';
-  const APP_VERSION = 'v10.23';
+  const CONFIG_VERSION = 'v10.24';
+  const APP_VERSION = 'v10.24';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -863,11 +863,11 @@
     return { bg: '#1A1A1A', fg: '#FFFFFF', stage: 4 };
   }
 
-  // 일=빨강·토=파랑 — 진한 칸(흰 글자 단계)에선 밝은 톤으로 대비 유지
+  // 일·공휴일=빨강·토=파랑 — 진한 칸(흰 글자 단계)에선 밝은 톤으로 대비 유지
   const WEEKEND_FG = { '0': ['#D32F2F', '#FF8A80'], '6': ['#1565C0', '#90CAF9'] };
   function applyCellStyle(cell, r){
     const s = densityStyle(r);
-    const we = WEEKEND_FG[cell.dataset.wd];
+    const we = WEEKEND_FG[cell.dataset.hol ? '0' : cell.dataset.wd];
     if(s.bg){
       cell.style.background = s.bg;
       cell.style.borderColor = 'transparent';
@@ -944,6 +944,7 @@
         (isTod ? ' today' : '');
       cell.dataset.calKey = k;
       cell.dataset.wd = String(d.getDay());
+      if(isHoliday(d)) cell.dataset.hol = '1';
       cell.textContent = String(day);
 
       if(!before && !future){
@@ -1176,7 +1177,19 @@
   }
 
   function isWeekend(d){ const w = d.getDay(); return w === 0 || w === 6; }
-  // 스터디 달력 농도 = min(1, (시간합 × 밀도계수) / 기준(평일4·주말8))
+  // 빨간 날(사용자 구글 캘린더 🇰🇷 · 2026~2027 — 2028 은 넣어야 한다) — 달력 빨강 + 공부 기준
+  const KR_HOLIDAYS = new Set([
+    '2026-01-01','2026-02-16','2026-02-17','2026-02-18','2026-03-01','2026-03-02','2026-05-01','2026-05-05','2026-05-24','2026-05-25',
+    '2026-06-03','2026-06-06','2026-07-17','2026-08-15','2026-08-17','2026-09-24','2026-09-25','2026-09-26','2026-10-03','2026-10-05','2026-10-09','2026-12-25',
+    '2027-01-01','2027-02-06','2027-02-07','2027-02-08','2027-02-09','2027-03-01','2027-05-01','2027-05-03','2027-05-05','2027-05-13',
+    '2027-06-06','2027-07-17','2027-07-19','2027-08-15','2027-08-16','2027-09-14','2027-09-15','2027-09-16','2027-10-03','2027-10-04','2027-10-09','2027-10-11','2027-12-25','2027-12-27'
+  ]);
+  // 쉬는 날 규칙(사용자 2026-10-19 · HQ 4100h 경로와 같은 셈): 평일 공휴일·설 이틀(전날·당일)·추석 평일 = 쉼(0h) · 그 밖의 설 연휴일 = 주말처럼
+  const SEOL_REST  = new Set(['2026-02-16','2026-02-17','2027-02-06','2027-02-07']);
+  const SEOL_STUDY = new Set(['2026-02-18','2027-02-08']);
+  const isHoliday = d => KR_HOLIDAYS.has(dateKey(d));
+  const isRestDay = d => { const k = dateKey(d); return SEOL_REST.has(k) || (isHoliday(d) && !isWeekend(d) && !SEOL_STUDY.has(k)); };
+  // 스터디 달력 농도 = min(1, (시간합 × 밀도계수) / 기준(평일4·주말·휴일8))
   function studyRatioFromKey(k){
     const s = getKey('study:' + k);
     if(!s) return 0;
@@ -1185,7 +1198,7 @@
     const factor = STUDY_DENSITY_FACTOR[s.density] || 1.0;
     const p = k.split('-');
     const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
-    const base = isWeekend(d) ? 8 : 4;
+    const base = (isWeekend(d) || isHoliday(d)) ? 8 : 4;
     return Math.min(1, (hours * factor) / base);
   }
 
@@ -1257,7 +1270,7 @@
     const since = parseDateKey(STUDY_PACE.since);
     if(start.getTime() < since.getTime()) start = since;
     const last = today.getTime() < end.getTime() ? today : end;
-    const dayTarget = d => isWeekend(d) ? STUDY_PACE.weekend : STUDY_PACE.weekday;
+    const dayTarget = d => isRestDay(d) ? 0 : (isWeekend(d) || SEOL_STUDY.has(dateKey(d))) ? STUDY_PACE.weekend : STUDY_PACE.weekday;
     const daysLeft = Math.max(0, Math.round((end - today) / 86400000));
     const phaseLbl = ms.phase ? (ex.name || '1차') + ' ' + ms.phase + '구간' : (ex.name || '1차');
     const md = d => (d.getMonth() + 1) + '/' + d.getDate();
