@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.14</title>
+<title>Fee v10.15</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -523,8 +523,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.14';
-  const APP_VERSION = 'v10.14';
+  const CONFIG_VERSION = 'v10.15';
+  const APP_VERSION = 'v10.15';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1248,6 +1248,7 @@
     let start;
     if(mi > 0){ start = parseDateKey(ex.milestones[mi - 1].end); start.setDate(start.getDate() + 1); }
     else { const e = studyEarliestKey(); start = e ? parseDateKey(e) : new Date(today); }
+    const phaseStart = new Date(start);
     const since = parseDateKey(STUDY_PACE.since);
     if(start.getTime() < since.getTime()) start = since;
     const last = today.getTime() < end.getTime() ? today : end;
@@ -1286,7 +1287,7 @@
     const fmtH = v => (Math.round(v * 10) / 10).toFixed(1);
     host.className = 'study-gauge';
     host.innerHTML =
-      `<div class="sg-top"><span class="sg-name">${phaseLbl}</span><span class="sg-date">${md(start)} ~ ${md(end)} · D-${daysLeft}</span></div>` +
+      `<div class="sg-top"><span class="sg-name">${phaseLbl}</span><span class="sg-date">${md(phaseStart)} ~ ${md(end)} · D-${daysLeft}</span></div>` +
       `<div class="sg-nums"><b style="color:${col}">${my.toFixed(2)}</b><b>${need.toFixed(2)}</b></div>` +
       `<div class="sg-lbls"><span>구간 평균</span><span>기준</span></div>` +
       `<svg class="sg-svg" viewBox="0 0 200 114">` +
@@ -1297,7 +1298,7 @@
         `<circle cx="${cx}" cy="${cy}" r="5.5" fill="${col}"/>` +
       `</svg>` +
       `<div class="sg-pct" style="color:${col}">${pctTxt}</div>` +
-      `<div class="sg-sub">구간 ${fmtH(got)}h / 기준 ${fmtH(expect)}h</div>`;
+      `<div class="sg-sub">${start.getTime() > phaseStart.getTime() ? md(start) + '~ ' : ''}구간 ${fmtH(got)}h / 기준 ${fmtH(expect)}h</div>`;
   }
 
   function renderStudy(){
