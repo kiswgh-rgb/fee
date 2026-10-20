@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.15</title>
+<title>Fee v10.16</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -329,6 +329,7 @@
     border: 0.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-primary);
   }
   .study-name { font-size: 16px; font-weight: 500; color: var(--text-primary); }
+.study-ago{color:#999;font-size:.75em;margin-left:.4em}
   .study-ctrl { display: flex; align-items: center; gap: 10px; }
   .study-hours { font-size: 15px; font-weight: 500; color: var(--accent); min-width: 50px; text-align: center; font-variant-numeric: tabular-nums; }
   .study-step {
@@ -523,8 +524,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.15';
-  const APP_VERSION = 'v10.15';
+  const CONFIG_VERSION = 'v10.16';
+  const APP_VERSION = 'v10.16';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1100,8 +1101,8 @@
 
   // ===== Study(시험 진도) =====
   const DEFAULT_STUDY_CONFIG = {
-    version: 'sv1',
-    subjects: ['세법학','회계학','재정학','행정소송법'],
+    version: 'sv2',
+    subjects: ['세법학','재무회계','원가회계','재정학','행정소송법'],
     hours_step: 0.5, hours_min: 0, hours_max: 8,
     density_map: { '1':'하', '2':'중', '3':'상' },
     // 속도계 구간 (HQ plans/semu_master.json stages[1차].milestones 에서 옮긴 정적 상수 — 재보정 시 숫자만 갱신)
@@ -1132,6 +1133,8 @@
     }
     // 비파괴: subjects가 달라도 study:* 일별 기록은 절대 삭제하지 않음. 누락 필드만 보정.
     let updated = false;
+    // v10.16: 회계학 → 재무·원가 분리(비파괴 — 지난 study:* 의 회계학 기록은 남고 누계에 계속 포함)
+    if(c.version !== 'sv2' && Array.isArray(c.subjects)){ const i = c.subjects.indexOf('회계학'); if(i >= 0){ c.subjects.splice(i, 1, '재무회계', '원가회계'); updated = true; } }
     if(c.version !== DEFAULT_STUDY_CONFIG.version){ c.version = DEFAULT_STUDY_CONFIG.version; updated = true; }
     if(!Array.isArray(c.subjects) || !c.subjects.length){ c.subjects = DEFAULT_STUDY_CONFIG.subjects.slice(); updated = true; }
     if(typeof c.hours_step !== 'number'){ c.hours_step = 0.5; updated = true; }
@@ -1221,6 +1224,17 @@
     const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
     d.setHours(0, 0, 0, 0);
     return d;
+  }
+  function studyDaysSince(name){
+    let last = null;
+    listKeys('study:').forEach(k => {
+      const s = getKey(k);
+      const v = s && s.hours ? s.hours[name] : 0;
+      if(typeof v === 'number' && v > 0){ const dk = k.slice(6); if(!last || dk > last) last = dk; }
+    });
+    if(!last) return null;
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    return Math.round((t - parseDateKey(last)) / 86400000);
   }
   function studyEarliestKey(){
     let min = null;
@@ -1317,6 +1331,13 @@
           '<button type="button" class="study-step" data-act="inc">+</button>' +
         '</div>';
       row.querySelector('.study-name').textContent = name;
+      const ago = studyDaysSince(name);
+      if(ago !== null){
+        const sp = document.createElement('span');
+        sp.className = 'study-ago';
+        sp.textContent = ago <= 0 ? '오늘' : ago + '일';
+        row.querySelector('.study-name').appendChild(sp);
+      }
       const hoursEl = row.querySelector('.study-hours');
       const decBtn = row.querySelector('[data-act="dec"]');
       const incBtn = row.querySelector('[data-act="inc"]');
