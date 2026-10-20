@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.24</title>
+<title>Fee v10.25</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -526,8 +526,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.24';
-  const APP_VERSION = 'v10.24';
+  const CONFIG_VERSION = 'v10.25';
+  const APP_VERSION = 'v10.25';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -903,6 +903,13 @@
     applyCellStyle(cell, calRatioFromKey(k));
   }
 
+  // 달력 첫날 = F 는 앱 시작일 · S 는 첫 공부 기록일(그 전은 비활성 — 표시만, 누적 무관)
+  function calStartDate(){
+    if(currentView !== 'study') return START_DATE;
+    const e = studyEarliestKey();
+    return e ? parseDateKey(e) : START_DATE;
+  }
+
   function renderCalendar(){
     $('cal-title').textContent = `${calMonth.getFullYear()}.${pad(calMonth.getMonth()+1)}`;
 
@@ -922,6 +929,7 @@
     const last  = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0);
     const firstWd = first.getDay();
     const today = new Date(); today.setHours(0,0,0,0);
+    const calStart = calStartDate();
 
     for(let i = 0; i < firstWd; i++){
       const blank = document.createElement('div');
@@ -932,7 +940,7 @@
     for(let day = 1; day <= last.getDate(); day++){
       const d = new Date(calMonth.getFullYear(), calMonth.getMonth(), day);
       const k = dateKey(d);
-      const before = d.getTime() < START_DATE.getTime();
+      const before = d.getTime() < calStart.getTime();
       const future = d.getTime() > today.getTime();
       const isSel = sameDay(d, viewDate);
       const isTod = sameDay(d, today);
@@ -967,7 +975,7 @@
 
   function canPrev(){
     const lastOfPrev = new Date(calMonth.getFullYear(), calMonth.getMonth(), 0);
-    return lastOfPrev.getTime() >= START_DATE.getTime();
+    return lastOfPrev.getTime() >= calStartDate().getTime();
   }
   function canNext(){
     const today = new Date(); today.setHours(0,0,0,0);
