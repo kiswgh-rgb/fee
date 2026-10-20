@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.22</title>
+<title>Fee v10.23</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -352,10 +352,10 @@
   .study-gauge .sg-top { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
   .study-gauge .sg-name { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
   .study-gauge .sg-date { font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
-  .study-gauge .sg-nums { display: flex; justify-content: space-between; width: 100%; margin-top: 6px; }
-  .study-gauge .sg-nums b { font-size: 17px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-  .study-gauge .sg-svg { width: 230px; height: 131px; display: block; }
-  .study-gauge .sg-lbls { display: flex; justify-content: space-between; width: 100%; font-size: 11px; color: var(--text-tertiary); }
+  .study-gauge .sg-row { display: flex; justify-content: space-between; width: 100%; gap: 8px; margin-top: 6px; }
+  .study-gauge .sg-col { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  .study-gauge .sg-col .sg-date { font-size: 11px; }
+  .study-gauge .sg-svg { width: 100%; max-width: 160px; height: auto; display: block; margin-top: 2px; }
   .study-gauge .sg-pct { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: -6px; }
   .study-gauge .sg-line { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-top: 4px; }
   .study-gauge .sg-line b { color: var(--text-primary); font-weight: 700; }
@@ -526,8 +526,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.22';
-  const APP_VERSION = 'v10.22';
+  const CONFIG_VERSION = 'v10.23';
+  const APP_VERSION = 'v10.23';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1258,64 +1258,56 @@
     if(start.getTime() < since.getTime()) start = since;
     const last = today.getTime() < end.getTime() ? today : end;
     const dayTarget = d => isWeekend(d) ? STUDY_PACE.weekend : STUDY_PACE.weekday;
-    let got = 0, expect = 0, effDays = 0;
-    for(const d = new Date(start); d.getTime() <= last.getTime(); d.setDate(d.getDate() + 1)){
-      const h = studyDayHours(getKey('study:' + dateKey(d)));
-      const t = dayTarget(d);
-      got += h;
-      if(d.getTime() === today.getTime()){ const f = Math.min(1, h / t); expect += t * f; effDays += f; }
-      else { expect += t; effDays += 1; }
-    }
     const daysLeft = Math.max(0, Math.round((end - today) / 86400000));
-    const cap = (ex.weekly_cap || 36) / 7;
-    const started = effDays > 0.001;
-    const my = started ? got / effDays : 0;
-    const need = started ? expect / effDays : dayTarget(today);
-    const ratio = expect > 0 ? got / expect : 0;
-    const col = started ? paceColor(my, need) : 'var(--text-tertiary)';
-    // 반원 게이지 (0 → cap)
+    const phaseLbl = ms.phase ? (ex.name || '1차') + ' ' + ms.phase + '구간' : (ex.name || '1차');
+    const md = d => (d.getMonth() + 1) + '/' + d.getDate();
+    const fmtH = v => (Math.round(v * 10) / 10).toFixed(1);
+    const fmtF = v => Number.isInteger(Math.round(v * 10) / 10) ? String(Math.round(v)) : fmtH(v);
+    const sumT = (a, b) => { let s = 0; for(const d = new Date(a); d.getTime() <= b.getTime(); d.setDate(d.getDate() + 1)) s += dayTarget(d); return s; };
+    const sumH = (a, b) => { let s = 0; for(const d = new Date(a); d.getTime() <= b.getTime(); d.setDate(d.getDate() + 1)) s += studyDayHours(getKey('study:' + dateKey(d))); return s; };
+    // 구간 = 구간 첫날부터 · 기준 소급 ❌ — since 전 날은 한 시간을 그대로 목표로 친다(HQ semu_pacer prior 와 같은 방식)
+    const pre = start.getTime() > phaseStart.getTime() ? sumH(phaseStart, new Date(start.getTime() - 86400000)) : 0;
+    const ph = { got: pre + sumH(start, last), now: pre + sumT(start, last), fin: pre + sumT(start, end) };
+    // 이번 주 = 일요일~토요일(달력과 같은 주)
+    const ws = new Date(today); ws.setDate(ws.getDate() - today.getDay());
+    const we = new Date(ws); we.setDate(we.getDate() + 6);
+    const wk = { got: sumH(ws, today), now: sumT(ws, today), fin: sumT(ws, we) };
+    // 반원 하나 = 한 시간 ÷ 지금까지 목표(오늘 몫 전부) · 검은 눈금 = 100% · 오른쪽 끝 = 초맥시멈(weekly_cap ÷ 기준 주간합)
+    const top = (ex.weekly_cap || 36) / (STUDY_PACE.weekday * 5 + STUDY_PACE.weekend * 2);
     const cx = 100, cy = 98, r = 82;
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    const angOf = v => Math.PI * (1 - clamp(v / cap, 0, 1));
+    const angOf = v => Math.PI * (1 - clamp(v / top, 0, 1));
     const polar = (a, rr) => [cx + Math.cos(a) * rr, cy - Math.sin(a) * rr];
     const arc = (a0, a1, c) => {
       const [x0, y0] = polar(a0, r), [x1, y1] = polar(a1, r);
       const large = (a0 - a1) > Math.PI ? 1 : 0;
       return `<path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round"/>`;
     };
-    const needA = angOf(need);
-    const [nx, ny] = polar(angOf(my), r - 12);
-    const [tx0, ty0] = polar(needA, r - 14), [tx1, ty1] = polar(needA, r + 5);
-    const phaseLbl = ms.phase ? (ex.name || '1차') + ' ' + ms.phase + '구간' : (ex.name || '1차');
-    const md = d => (d.getMonth() + 1) + '/' + d.getDate();
-    const pctTxt = started ? Math.round(ratio * 100) + '%' : '시작';
-    const fmtH = v => (Math.round(v * 10) / 10).toFixed(1);
-    // 한 줄 = 한 시간(굵게) / 지금까지 목표(오늘 몫 전부) + 끝 목표(작은 회색 — 일요일·구간 마감까지 총량)
-    const fmtF = v => Number.isInteger(Math.round(v * 10) / 10) ? String(Math.round(v)) : fmtH(v);
-    const sumT = (a, b) => { let s = 0; for(const d = new Date(a); d.getTime() <= b.getTime(); d.setDate(d.getDate() + 1)) s += dayTarget(d); return s; };
-    const sumH = (a, b) => { let s = 0; for(const d = new Date(a); d.getTime() <= b.getTime(); d.setDate(d.getDate() + 1)) s += studyDayHours(getKey('study:' + dateKey(d))); return s; };
-    // 구간 누적은 구간 첫날부터 · 기준 소급 ❌ — since 전 날은 한 시간을 그대로 목표로 친다(HQ semu_pacer prior 와 같은 방식)
-    const pre = start.getTime() > phaseStart.getTime() ? sumH(phaseStart, new Date(start.getTime() - 86400000)) : 0;
-    const ph = { got: pre + got, now: pre + sumT(start, last), fin: pre + sumT(start, end) };
-    // 이번 주 = 일요일~토요일(달력과 같은 주)
-    const ws = new Date(today); ws.setDate(ws.getDate() - today.getDay());
-    const we = new Date(ws); we.setDate(we.getDate() + 6);
-    const wk = { got: sumH(ws, today), now: sumT(ws, today), fin: sumT(ws, we) };
+    const one = (name, range, o) => {
+      const on = o.now > 0.001;
+      const ratio = on ? o.got / o.now : 0;
+      const col = on ? paceColor(o.got, o.now) : 'var(--text-tertiary)';
+      const tA = angOf(1);
+      const [nx, ny] = polar(angOf(ratio), r - 12);
+      const [tx0, ty0] = polar(tA, r - 14), [tx1, ty1] = polar(tA, r + 5);
+      return `<div class="sg-col"><div class="sg-name">${name}</div><div class="sg-date">${range}</div>` +
+        `<svg class="sg-svg" viewBox="0 0 200 114">` +
+          arc(Math.PI, 0.001, 'var(--bg-tertiary)') +
+          arc(tA, 0.001, 'var(--accent-bg)') +
+          `<line x1="${tx0.toFixed(1)}" y1="${ty0.toFixed(1)}" x2="${tx1.toFixed(1)}" y2="${ty1.toFixed(1)}" stroke="var(--text-primary)" stroke-width="2"/>` +
+          `<line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${col}" stroke-width="4" stroke-linecap="round"/>` +
+          `<circle cx="${cx}" cy="${cy}" r="5.5" fill="${col}"/>` +
+        `</svg>` +
+        `<div class="sg-pct" style="color:${col}">${on ? Math.round(ratio * 100) + '%' : '시작'}</div>` +
+        `<div class="sg-line"><b>${fmtH(o.got)}</b> / ${fmtH(o.now)}<span class="sg-fin">${fmtF(o.fin)}</span>h</div></div>`;
+    };
     host.className = 'study-gauge';
     host.innerHTML =
-      `<div class="sg-top"><span class="sg-name">${phaseLbl}</span><span class="sg-date">${md(phaseStart)} ~ ${md(end)} · D-${daysLeft}</span></div>` +
-      `<div class="sg-nums"><b style="color:${col}">${my.toFixed(2)}</b><b>${need.toFixed(2)}</b></div>` +
-      `<div class="sg-lbls"><span>구간 평균</span><span>기준</span></div>` +
-      `<svg class="sg-svg" viewBox="0 0 200 114">` +
-        arc(Math.PI, 0.001, 'var(--bg-tertiary)') +
-        (needA > 0.02 ? arc(needA, 0.001, 'var(--accent-bg)') : '') +
-        `<line x1="${tx0.toFixed(1)}" y1="${ty0.toFixed(1)}" x2="${tx1.toFixed(1)}" y2="${ty1.toFixed(1)}" stroke="var(--text-primary)" stroke-width="2"/>` +
-        `<line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${col}" stroke-width="4" stroke-linecap="round"/>` +
-        `<circle cx="${cx}" cy="${cy}" r="5.5" fill="${col}"/>` +
-      `</svg>` +
-      `<div class="sg-pct" style="color:${col}">${pctTxt}</div>` +
-      `<div class="sg-line">이번 주 <b>${fmtH(wk.got)}</b> / ${fmtH(wk.now)}<span class="sg-fin">${fmtF(wk.fin)}</span>` +
-      ` · ${ms.phase ? ms.phase + '구간' : '구간'} <b>${fmtH(ph.got)}</b> / ${fmtH(ph.now)}<span class="sg-fin">${fmtF(ph.fin)}</span>h</div>`;
+      `<div class="sg-top"><span class="sg-name">${phaseLbl}</span><span class="sg-date">D-${daysLeft}</span></div>` +
+      `<div class="sg-row">` +
+        one('이번 주', `${md(ws)}~${md(we)}`, wk) +
+        one(ms.phase ? ms.phase + '구간' : '구간', `${md(phaseStart)}~${md(end)}`, ph) +
+      `</div>`;
   }
 
   function renderStudy(){
