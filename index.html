@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.19</title>
+<title>Fee v10.20</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -340,6 +340,7 @@
   .study-step:not(:disabled):active { background: var(--bg-tertiary); }
   .study-summary { text-align: center; font-size: 12px; letter-spacing: -0.2px; color: var(--text-secondary); margin-bottom: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .study-summary span { color: var(--accent); font-weight: 600; }
+  .study-summary #study-goal1, .study-summary #study-goal2 { color: var(--text-tertiary); font-weight: 400; } /* 회색 = 끝 목표(계기판 밑 줄과 같은 표기) */
   #view-study .calendar { margin-bottom: 12px; }
   /* 공부 속도계(반원) — S 뷰에선 달력 바로 아래 */
   .study-gauge {
@@ -525,8 +526,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.19';
-  const APP_VERSION = 'v10.19';
+  const CONFIG_VERSION = 'v10.20';
+  const APP_VERSION = 'v10.20';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
