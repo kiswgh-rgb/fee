@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.13</title>
+<title>Fee v10.14</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -338,7 +338,7 @@
   }
   .study-step:disabled { opacity: 0.3; }
   .study-step:not(:disabled):active { background: var(--bg-tertiary); }
-  .study-summary { text-align: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+  .study-summary { text-align: center; font-size: 12px; letter-spacing: -0.2px; color: var(--text-secondary); margin-bottom: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .study-summary span { color: var(--accent); font-weight: 600; }
   #view-study .calendar { margin-bottom: 12px; }
   /* 공부 속도계(반원) — S 뷰에선 달력 바로 아래 */
@@ -418,7 +418,7 @@
 
     <div id="view-study" class="hidden">
       <div id="study-cards" class="study-cards"></div>
-      <div class="study-summary">오늘 <span id="study-today">0.0</span>h · 누적 <span id="study-total">0</span>h</div>
+      <div class="study-summary">오늘 <span id="study-today">0.0</span>h · 누적 <span id="study-total">0</span> / 1차 <span id="study-goal1">0</span> · 최종 <span id="study-goal2">0</span>h</div>
       <div id="study-gauge" class="study-gauge empty"></div>
     </div>
 
@@ -523,8 +523,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.13';
-  const APP_VERSION = 'v10.13';
+  const CONFIG_VERSION = 'v10.14';
+  const APP_VERSION = 'v10.14';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1119,6 +1119,9 @@
   let studyConfig = null;
   let studyDay = { hours: {}, density: null };
   let studyTotal = 0;
+  // 누계 표시용(HQ semu_master time_structure) — 앱 이전 기누적 · 1차(2027)·최종(2028 2차) 목표 누계(사용자 2026-10-20)
+  const STUDY_PRIOR_HOURS = 1100;
+  const STUDY_GOALS = { first: 2100, final: 4100 };
 
   function loadStudyConfig(){
     let c = getKey('study_config');
@@ -1200,7 +1203,11 @@
 
   function updateStudySummary(){
     $('study-today').textContent = studyDayHours(studyDay).toFixed(1);
-    $('study-total').textContent = String(Math.round(studyTotal * 10) / 10);
+    // 표시만 앱 이전 누적을 더한다 — studyTotal·동기화 total_hours 는 앱 기록 합 그대로
+    const fmtTotal = v => (Math.round(v * 10) / 10).toLocaleString('en-US');
+    $('study-total').textContent = fmtTotal(STUDY_PRIOR_HOURS + studyTotal);
+    $('study-goal1').textContent = fmtTotal(STUDY_GOALS.first);
+    $('study-goal2').textContent = fmtTotal(STUDY_GOALS.final);
     renderStudyGauge();
   }
 
