@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.20</title>
+<title>Fee v10.21</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -526,8 +526,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.20';
-  const APP_VERSION = 'v10.20';
+  const CONFIG_VERSION = 'v10.21';
+  const APP_VERSION = 'v10.21';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1293,11 +1293,14 @@
     // 한 줄 = 한 시간(굵게) / 지금까지 목표(오늘 몫 전부) + 끝 목표(작은 회색 — 일요일·구간 마감까지 총량)
     const fmtF = v => Number.isInteger(Math.round(v * 10) / 10) ? String(Math.round(v)) : fmtH(v);
     const sumT = (a, b) => { let s = 0; for(const d = new Date(a); d.getTime() <= b.getTime(); d.setDate(d.getDate() + 1)) s += dayTarget(d); return s; };
-    const ph = { now: sumT(start, last), fin: sumT(start, end) };
-    const mon = new Date(today); mon.setDate(mon.getDate() - ((today.getDay() + 6) % 7));
-    const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
-    const wk = { got: 0, now: sumT(mon, today), fin: sumT(mon, sun) };
-    for(const d = new Date(mon); d.getTime() <= today.getTime(); d.setDate(d.getDate() + 1)) wk.got += studyDayHours(getKey('study:' + dateKey(d)));
+    const sumH = (a, b) => { let s = 0; for(const d = new Date(a); d.getTime() <= b.getTime(); d.setDate(d.getDate() + 1)) s += studyDayHours(getKey('study:' + dateKey(d))); return s; };
+    // 구간 누적은 구간 첫날부터 · 기준 소급 ❌ — since 전 날은 한 시간을 그대로 목표로 친다(HQ semu_pacer prior 와 같은 방식)
+    const pre = start.getTime() > phaseStart.getTime() ? sumH(phaseStart, new Date(start.getTime() - 86400000)) : 0;
+    const ph = { got: pre + got, now: pre + sumT(start, last), fin: pre + sumT(start, end) };
+    // 이번 주 = 일요일~토요일(달력과 같은 주)
+    const ws = new Date(today); ws.setDate(ws.getDate() - today.getDay());
+    const we = new Date(ws); we.setDate(we.getDate() + 6);
+    const wk = { got: sumH(ws, today), now: sumT(ws, today), fin: sumT(ws, we) };
     host.className = 'study-gauge';
     host.innerHTML =
       `<div class="sg-top"><span class="sg-name">${phaseLbl}</span><span class="sg-date">${md(phaseStart)} ~ ${md(end)} · D-${daysLeft}</span></div>` +
@@ -1312,7 +1315,7 @@
       `</svg>` +
       `<div class="sg-pct" style="color:${col}">${pctTxt}</div>` +
       `<div class="sg-line">이번 주 <b>${fmtH(wk.got)}</b> / ${fmtH(wk.now)}<span class="sg-fin">${fmtF(wk.fin)}</span>` +
-      ` · ${ms.phase ? ms.phase + '구간' : '구간'} <b>${fmtH(got)}</b> / ${fmtH(ph.now)}<span class="sg-fin">${fmtF(ph.fin)}</span>h</div>`;
+      ` · ${ms.phase ? ms.phase + '구간' : '구간'} <b>${fmtH(ph.got)}</b> / ${fmtH(ph.now)}<span class="sg-fin">${fmtF(ph.fin)}</span>h</div>`;
   }
 
   function renderStudy(){
