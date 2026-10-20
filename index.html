@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.17</title>
+<title>Fee v10.18</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -355,7 +355,6 @@
   .study-gauge .sg-nums b { font-size: 17px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
   .study-gauge .sg-svg { width: 230px; height: 131px; display: block; }
   .study-gauge .sg-lbls { display: flex; justify-content: space-between; width: 100%; font-size: 11px; color: var(--text-tertiary); }
-  .study-gauge .sg-sub { font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; margin-top: 2px; }
   .study-gauge .sg-pct { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: -6px; }
   .navbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
@@ -523,8 +522,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.17';
-  const APP_VERSION = 'v10.17';
+  const CONFIG_VERSION = 'v10.18';
+  const APP_VERSION = 'v10.18';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1299,8 +1298,7 @@
         `<line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${col}" stroke-width="4" stroke-linecap="round"/>` +
         `<circle cx="${cx}" cy="${cy}" r="5.5" fill="${col}"/>` +
       `</svg>` +
-      `<div class="sg-pct" style="color:${col}">${pctTxt}</div>` +
-      `<div class="sg-sub">${start.getTime() > phaseStart.getTime() ? md(start) + '~ ' : ''}구간 ${fmtH(got)}h / 기준 ${fmtH(expect)}h</div>`;
+      `<div class="sg-pct" style="color:${col}">${pctTxt}</div>`;
   }
 
   function renderStudy(){
