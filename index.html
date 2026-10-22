@@ -6,24 +6,24 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Fee">
-<meta name="theme-color" content="#FFFFFF">
+<meta name="theme-color" content="#F4F2ED">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.34</title>
+<title>Fee v10.35</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
-    --bg-secondary: #F7F6F2;
-    --bg-tertiary: #F1EFE8;
-    --text-primary: #1A1A1A;
-    --text-secondary: #5F5E5A;
-    --text-tertiary: #888780;
-    --border: rgba(0,0,0,0.12);
-    --accent: #185FA5;
-    --accent-dark: #0C447C;
-    --accent-bg: #E6F1FB;
-    --warn: #B33A2C;
-    --amber: #C98A1E;
+    --bg-secondary: #ECE9E2;
+    --bg-tertiary: #F4F2ED;
+    --text-primary: #23231F;
+    --text-secondary: #5E5B53;
+    --text-tertiary: #8C887E;
+    --border: rgba(35,35,30,0.10);
+    --accent: #263B5E;
+    --accent-dark: #1B2A44;
+    --accent-bg: #E4E9F1;
+    --warn: #A23B2E;
+    --amber: #B07A1E;
     --radius-md: 8px;
     --radius-lg: 12px;
     --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", "Noto Sans KR", "Helvetica Neue", sans-serif;
@@ -170,8 +170,8 @@
     color: var(--text-tertiary);
     padding: 2px 0;
   }
-  .cal-weekday.sun { color: #D32F2F; }
-  .cal-weekday.sat { color: #1565C0; }
+  .cal-weekday.sun { color: #E4572E; }
+  .cal-weekday.sat { color: #111111; }
   .cal-cell {
     aspect-ratio: 1;
     min-height: 32px;
@@ -199,9 +199,9 @@
   .cal-cell.bars { flex-direction: column; gap: 3px; }
   .cal-num { font-size: 10px; line-height: 12px; }
   .cal-bars { display: flex; flex-direction: column; gap: 2px; width: 70%; }
-  .cal-bars i { display: block; height: 4px; border-radius: 2px; background: #E6E4DC; }
-  .cal-bars i.study.on { background: #D32F2F; }
-  .cal-bars i.move.on { background: #2E7D32; }
+  .cal-bars i { display: block; height: 4px; border-radius: 2px; background: #E0DCD3; }
+  .cal-bars i.study.on { background: #B4473A; }
+  .cal-bars i.move.on { background: #4F7A4A; }
   .record-bar {
     margin-top: 14px;
     text-align: center;
@@ -354,6 +354,12 @@
   .study-summary span { color: var(--accent); font-weight: 600; }
   .study-summary #study-goal1, .study-summary #study-goal2 { color: var(--text-tertiary); font-weight: 400; } /* 회색 = 끝 목표(계기판 밑 줄과 같은 표기) */
   #view-study .calendar { margin-bottom: 12px; }
+  /* v10.35 색 = 먹·남색 · 공부 달력 판만 모노·코랄(캔버스 1+5) — 변수를 이 판 안에서만 덮어쓴다 */
+  #view-study .calendar {
+    background: #EEEEEC;
+    --bg-primary: #FFFFFF; --border: rgba(0,0,0,0.10);
+    --text-primary: #111111; --text-tertiary: #8E8E8A; --bg-tertiary: #E4E4E1;
+  }
   /* 공부 속도계(반원) — S 뷰에선 달력 바로 아래 */
   .study-gauge {
     display: flex; flex-direction: column; align-items: center;
@@ -382,7 +388,7 @@
   .sync-pill {
     pointer-events: auto;
     width: 250px; height: 40px; border-radius: 20px;
-    border: 0.5px solid rgba(0,0,0,0.08); background: rgba(247,246,242,0.92);
+    border: 0.5px solid rgba(0,0,0,0.08); background: rgba(236,233,226,0.92);
     color: var(--text-secondary); cursor: pointer;
     font-size: 14px; font-weight: 500; font-family: inherit;
     display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -397,7 +403,7 @@
   }
   .set-btn:active { background: var(--bg-secondary); }
   /* 설정은 잘 안 써서 눈에 안 띄게 — 구석의 작은 점 하나(누르는 칸은 40px 그대로) */
-  .set-dot { width: 6px; height: 6px; border-radius: 50%; background: #BDBBB3; }
+  .set-dot { width: 6px; height: 6px; border-radius: 50%; background: #B9B4A9; }
   .toast {
     position: fixed; left: 50%; transform: translateX(-50%) translateY(20px);
     bottom: calc(88px + env(safe-area-inset-bottom, 0)); z-index: 120;
@@ -439,15 +445,15 @@
   .rb-labels span { height: 28px; width: 26px; display: flex; align-items: center; font-size: 11px; font-weight: 500; color: var(--text-secondary); }
   .rb-grid { flex: 1; min-width: 0; display: grid; column-gap: 2px; }
   .rb-col { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 2px; border-radius: 5px; min-width: 0; }
-  .rb-col i { display: block; height: 28px; border-radius: 2px; background: #E6E4DC; }
-  .rb-col i.study.on { background: #D32F2F; }
-  .rb-col i.move.on { background: #2E7D32; }
-  .rb-col i.rb-off { background: transparent; box-shadow: inset 0 0 0 1px #E6E4DC; }
-  .rb-col.sel { background: #DCE8F5; box-shadow: 0 0 0 2px #DCE8F5; }
+  .rb-col i { display: block; height: 28px; border-radius: 2px; background: #E0DCD3; }
+  .rb-col i.study.on { background: #B4473A; }
+  .rb-col i.move.on { background: #4F7A4A; }
+  .rb-col i.rb-off { background: transparent; box-shadow: inset 0 0 0 1px #E0DCD3; }
+  .rb-col.sel { background: #D9E0EB; box-shadow: 0 0 0 2px #D9E0EB; }
   .rb-col.today { outline: 1.5px solid var(--text-primary); outline-offset: 1px; }
   .rb-num { height: 12px; text-align: center; font-size: 9px; line-height: 12px; white-space: nowrap; overflow: visible; font-weight: 500; color: var(--text-secondary); }
-  .rb-num.red { color: #D32F2F; }
-  .rb-col.dim .rb-num { color: #C9C7BF; }
+  .rb-num.red { color: #B4473A; }
+  .rb-col.dim .rb-num { color: #C4BFB4; }
   .rb-col.sel .rb-num, .rb-col.today .rb-num { font-weight: 700; }
   .hidden { display: none; }
 </style>
@@ -577,8 +583,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.34';
-  const APP_VERSION = 'v10.34';
+  const CONFIG_VERSION = 'v10.35';
+  const APP_VERSION = 'v10.35';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -930,14 +936,14 @@
 
   function densityStyle(r){
     if(r < EPSILON) return { bg: null, fg: null, stage: 0 };
-    if(r < 0.30 - EPSILON) return { bg: '#E8E8E8', fg: '#1A1A1A', stage: 1 };
-    if(r < 0.60 - EPSILON) return { bg: '#B0B0B0', fg: '#1A1A1A', stage: 2 };
-    if(r < 0.90 - EPSILON) return { bg: '#606060', fg: '#FFFFFF', stage: 3 };
-    return { bg: '#1A1A1A', fg: '#FFFFFF', stage: 4 };
+    if(r < 0.30 - EPSILON) return { bg: '#E4E4E1', fg: '#1A1A1A', stage: 1 };
+    if(r < 0.60 - EPSILON) return { bg: '#B4B4B0', fg: '#1A1A1A', stage: 2 };
+    if(r < 0.90 - EPSILON) return { bg: '#6B6B67', fg: '#FFFFFF', stage: 3 };
+    return { bg: '#111111', fg: '#FFFFFF', stage: 4 };
   }
 
   // 일·공휴일=빨강·토=파랑 — 진한 칸(흰 글자 단계)에선 밝은 톤으로 대비 유지
-  const WEEKEND_FG = { '0': ['#D32F2F', '#FF8A80'], '6': ['#1565C0', '#90CAF9'] };
+  const WEEKEND_FG = { '0': ['#E4572E', '#FF9A8F'], '6': ['#111111', '#A9C3FA'] };
   function applyCellStyle(cell, r){
     const s = densityStyle(r);
     const we = WEEKEND_FG[cell.dataset.hol ? '0' : cell.dataset.wd];
