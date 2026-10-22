@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.31</title>
+<title>Fee v10.32</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -110,6 +110,7 @@
     color: var(--text-secondary);
   }
   .cell.checked .cell-weight { color: var(--accent); }
+  .cell-tix { font-size: 18px; letter-spacing: 2px; line-height: 1; }
   .summary {
     background: var(--bg-secondary);
     border-radius: var(--radius-md);
@@ -548,8 +549,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.31';
-  const APP_VERSION = 'v10.31';
+  const CONFIG_VERSION = 'v10.32';
+  const APP_VERSION = 'v10.32';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -801,15 +802,33 @@
       cell.style.cursor = 'not-allowed';
     }
 
-    const cnt = itemCounts[idx] || 0;
-    const countHtml = `<span class="cell-count">${cnt}D</span>`;
-
-    cell.innerHTML =
-      '<div class="cell-name">' + it.name + countHtml + '</div>' +
-      '<div class="cell-weight">' + it.weight + '%</div>';
+    // v10.32: 횟수·비중 표시 뺌 — 케틀벨 칸 오른쪽엔 휴식권만
+    cell.innerHTML = '<div class="cell-name">' + it.name + '</div>' +
+      (it.name === TICKET_ITEM ? '<div class="cell-tix" aria-label="휴식권"></div>' : '');
+    if(it.name === TICKET_ITEM) paintTickets(cell);
 
     if(!legacy) attachTap(cell, idx);
     return cell;
+  }
+
+  // 케틀벨 휴식권(DECISIONS 2026-10-22): 3일 연속 → 1장 · 쉰 날(쿠폰을 썼든 아니든)은 연속이 끊겨 전부 소멸
+  // 연속 = 보는 날까지 이어진 날수 — 그날 아직 안 했으면 전날까지로 센다(하루가 끝나기 전엔 끊긴 게 아님)
+  const TICKET_ITEM = '케틀벨', TICKET_EVERY = 3, TICKET_SHOW_MAX = 5;
+  function ticketsAt(d){
+    const i = config.items.findIndex(it => it.name === TICKET_ITEM);
+    if(i < 0) return 0;
+    const done = (x) => { const day = getKey('day:' + dateKey(x)); return !!(day && day.checks && day.checks[i]); };
+    const x = new Date(d);
+    if(!done(x)) x.setDate(x.getDate() - 1);
+    let streak = 0;
+    while(streak < 3660 && done(x)){ streak++; x.setDate(x.getDate() - 1); }
+    return Math.floor(streak / TICKET_EVERY);
+  }
+  function paintTickets(cell){
+    const el = cell.querySelector('.cell-tix');
+    if(!el) return;
+    const n = ticketsAt(viewDate);
+    el.textContent = n <= 0 ? '' : n <= TICKET_SHOW_MAX ? '🏷️'.repeat(n) : '🏷️×' + n;
   }
 
   function attachTap(cell, idx){
@@ -833,6 +852,7 @@
       haptic();
       saveDay(viewDate, currentDay);
       setKey('total_liter', totalLiter);
+      paintTickets(cell);
     }
 
     cell.addEventListener('touchstart', (e) => {
