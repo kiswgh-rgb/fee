@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.30</title>
+<title>Fee v10.31</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -377,16 +377,18 @@
     bottom: calc(24px + env(safe-area-inset-bottom, 0));
     display: flex; justify-content: center; pointer-events: none;
   }
+  /* v10.31: 바탕색 알약(회색 글씨 · 아이콘만 파랑) — 파란 알약이 너무 튀었다 */
   .sync-pill {
     pointer-events: auto;
-    width: 220px; height: 52px; border: none; border-radius: 26px;
-    background: var(--accent); color: #FFFFFF; cursor: pointer;
-    font-size: 16px; font-weight: 600; font-family: inherit;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    box-shadow: 0 6px 18px rgba(24,95,165,0.30);
+    width: 250px; height: 40px; border-radius: 20px;
+    border: 0.5px solid rgba(0,0,0,0.08); background: rgba(247,246,242,0.92);
+    color: var(--text-secondary); cursor: pointer;
+    font-size: 14px; font-weight: 500; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
     touch-action: manipulation; transition: transform 0.12s, background 0.12s;
   }
-  .sync-pill:active { transform: scale(0.97); background: var(--accent-dark); }
+  .sync-pill svg { color: var(--accent); }
+  .sync-pill:active { transform: scale(0.97); background: var(--bg-tertiary); }
   .set-btn {
     position: absolute; right: 6px; top: 50%; transform: translateY(-50%); pointer-events: auto;
     width: 40px; height: 40px; padding: 0; border: none; border-radius: 8px;
@@ -459,7 +461,7 @@
   </div>
 
   <nav id="navbar" class="navbar hidden">
-    <button id="nav-sync" type="button" class="sync-pill"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></svg>동기화</button>
+    <button id="nav-sync" type="button" class="sync-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></svg>동기화</button>
     <button id="nav-settings" type="button" class="set-btn" aria-label="설정"><span class="set-dot"></span></button>
   </nav>
   <div id="toast" class="toast"></div>
@@ -546,8 +548,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.30';
-  const APP_VERSION = 'v10.30';
+  const CONFIG_VERSION = 'v10.31';
+  const APP_VERSION = 'v10.31';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
