@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.32</title>
+<title>Fee v10.33</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -424,6 +424,32 @@
   .set-adv summary { font-size: 12px; color: var(--text-secondary); cursor: pointer; }
   .set-adv-btns { display: flex; gap: 6px; margin-top: 8px; }
   .set-adv-btns .modal-btn { flex: 1; }
+  /* F 달력 = 띠 3줄(v10.33 · 캔버스 띠-다): 한 달을 항목별 띠로 · 보기 전용 — 날짜 고르기는 머리 ‹ › */
+  .day-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 44px; height: 44px; padding: 0; border: none; border-radius: 8px;
+    background: transparent; color: var(--text-secondary); font-size: 20px; font-family: inherit;
+    cursor: pointer; touch-action: manipulation;
+  }
+  .day-nav:disabled { opacity: 0.3; cursor: default; }
+  .day-nav:not(:disabled):active { background: var(--bg-secondary); }
+  #day-prev { left: calc(50% - 104px); }
+  #day-next { right: calc(50% - 104px); }
+  .cal-ribbon { display: flex; gap: 8px; }
+  .rb-labels { display: flex; flex-direction: column; gap: 4px; padding-top: 4px; }
+  .rb-labels span { height: 28px; width: 26px; display: flex; align-items: center; font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+  .rb-grid { flex: 1; min-width: 0; display: grid; column-gap: 2px; }
+  .rb-col { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 2px; border-radius: 5px; min-width: 0; }
+  .rb-col i { display: block; height: 28px; border-radius: 2px; background: #E6E4DC; }
+  .rb-col i.study.on { background: #D32F2F; }
+  .rb-col i.move.on { background: #2E7D32; }
+  .rb-col i.rb-off { background: transparent; box-shadow: inset 0 0 0 1px #E6E4DC; }
+  .rb-col.sel { background: #DCE8F5; box-shadow: 0 0 0 2px #DCE8F5; }
+  .rb-col.today { outline: 1.5px solid var(--text-primary); outline-offset: 1px; }
+  .rb-num { height: 12px; text-align: center; font-size: 9px; line-height: 12px; white-space: nowrap; overflow: visible; font-weight: 500; color: var(--text-secondary); }
+  .rb-num.red { color: #D32F2F; }
+  .rb-col.dim .rb-num { color: #C9C7BF; }
+  .rb-col.sel .rb-num, .rb-col.today .rb-num { font-weight: 700; }
   .hidden { display: none; }
 </style>
 </head>
@@ -432,8 +458,10 @@
   <div id="loading" class="loading">불러오는 중...</div>
   <div id="app" class="hidden">
     <div class="header">
+      <button id="day-prev" type="button" class="day-nav" aria-label="전날">‹</button>
       <div id="date-label" class="date-label">—</div>
       <div id="date-sub" class="date-sub">—</div>
+      <button id="day-next" type="button" class="day-nav" aria-label="다음 날">›</button>
     </div>
 
     <div id="view-habit">
@@ -458,6 +486,7 @@
       </div>
       <div id="cal-weekdays" class="cal-weekdays"></div>
       <div id="cal-grid" class="cal-grid"></div>
+      <div id="cal-ribbon" class="cal-ribbon hidden"></div>
     </div>
   </div>
 
@@ -549,8 +578,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.32';
-  const APP_VERSION = 'v10.32';
+  const CONFIG_VERSION = 'v10.33';
+  const APP_VERSION = 'v10.33';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -778,6 +807,9 @@
   }
 
   function renderDate(){
+    const tk = dateKey(new Date()), vk = dateKey(viewDate);
+    $('day-prev').disabled = vk <= dateKey(START_DATE);
+    $('day-next').disabled = vk >= tk;
     $('date-label').textContent = `${viewDate.getFullYear()}.${pad(viewDate.getMonth()+1)}.${pad(viewDate.getDate())}`;
     let sub = isToday(viewDate) ? `오늘 · ${weekdayKo(viewDate)}요일` : `${weekdayKo(viewDate)}요일`;
     if(isLegacyDate(viewDate) && getKey('legacy:' + dateKey(viewDate))){
@@ -959,7 +991,38 @@
     applyCellStyle(cell, 0);
   }
 
+  const RIBBON_LABELS = ['아침', '저녁', 'KB'];
+  function renderRibbon(){
+    const y = calMonth.getFullYear(), m = calMonth.getMonth();
+    const n = new Date(y, m + 1, 0).getDate();
+    const todayK = dateKey(new Date()), selK = dateKey(viewDate), startK = dateKey(START_DATE);
+    // 날짜 숫자는 한 칸이 좁아 이웃끼리 겹친다 — 고른 날·오늘 먼저, 1·5의 배수·말일은 그 옆자리가 비어 있을 때만
+    const shown = new Set();
+    const tryShow = (dd) => { if(dd >= 1 && dd <= n && !shown.has(dd - 1) && !shown.has(dd + 1)) shown.add(dd); };
+    [viewDate, new Date()].forEach(x => { if(x.getFullYear() === y && x.getMonth() === m) shown.add(x.getDate()); });
+    [1, 5, 10, 15, 20, 25, 30, n].forEach(tryShow);
+    let cols = '';
+    for(let day = 1; day <= n; day++){
+      const d = new Date(y, m, day), k = dateKey(d);
+      const dim = k < startK || k > todayK;
+      let cells;
+      if(dim) cells = '<i class="rb-off"></i>'.repeat(3);
+      else {
+        const checks = habitBarChecks(k);
+        if(checks) cells = HABIT_BAR_CLASS.map((c, i) => '<i class="' + c + (checks[i] ? ' on' : '') + '"></i>').join('');
+        else { const s = densityStyle(ratioFromKey(k)); cells = (s.bg ? '<i style="background:' + s.bg + '"></i>' : '<i></i>').repeat(3); }
+      }
+      const show = shown.has(day);
+      const red = d.getDay() === 0 || isHoliday(d);
+      cols += '<div class="rb-col' + (k === selK ? ' sel' : '') + (k === todayK ? ' today' : '') + (dim ? ' dim' : '') + '">' + cells +
+        '<span class="rb-num' + (red ? ' red' : '') + '">' + (show ? day : '') + '</span></div>';
+    }
+    $('cal-ribbon').innerHTML = '<div class="rb-labels">' + RIBBON_LABELS.map(l => '<span>' + l + '</span>').join('') + '</div>' +
+      '<div class="rb-grid" style="grid-template-columns: repeat(' + n + ', minmax(0, 1fr))">' + cols + '</div>';
+  }
+
   function paintCalCell(d){
+    if(currentView !== 'study'){ renderRibbon(); return; }
     const k = dateKey(d);
     const cell = document.querySelector('[data-cal-key="' + k + '"]');
     if(!cell) return;
@@ -975,6 +1038,11 @@
 
   function renderCalendar(){
     $('cal-title').textContent = `${calMonth.getFullYear()}.${pad(calMonth.getMonth()+1)}`;
+    const habit = currentView !== 'study';
+    $('cal-weekdays').classList.toggle('hidden', habit);
+    $('cal-grid').classList.toggle('hidden', habit);
+    $('cal-ribbon').classList.toggle('hidden', !habit);
+    if(habit){ renderRibbon(); return; }
 
     const wd = $('cal-weekdays');
     if(!wd.hasChildNodes()){
@@ -1471,11 +1539,23 @@
     renderCalendar();
     updateCalNav();
   }
+  // F 머리 ‹ › = 하루씩 — 띠가 보기 전용이라 지난날 고치기는 여기서
+  function stepDay(n){
+    const d = new Date(viewDate); d.setDate(d.getDate() + n);
+    const k = dateKey(d);
+    if(k < dateKey(START_DATE) || k > dateKey(new Date())) return;
+    calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+    onDateSelected(d);
+  }
+  $('day-prev').addEventListener('click', () => stepDay(-1));
+  $('day-next').addEventListener('click', () => stepDay(1));
   function showView(name){
     currentView = name;
     const habit = name === 'habit';
     $('view-habit').classList.toggle('hidden', !habit);
     $('view-study').classList.toggle('hidden', habit);
+    $('day-prev').classList.toggle('hidden', !habit);
+    $('day-next').classList.toggle('hidden', !habit);
     // 공용 달력 위치: F = 맨 아래 / S = 계기판 위(요약 줄 아래)
     if(habit) $('app').appendChild($('calendar'));
     else $('view-study').insertBefore($('calendar'), $('study-gauge'));
