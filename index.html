@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.25</title>
+<title>Fee v10.26</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -190,6 +190,13 @@
   .cal-cell.today { outline: 2px solid var(--text-primary); outline-offset: 1px; font-weight: 800; }
   .cal-cell.today.selected { outline-color: var(--accent); }
   .cal-cell.blank { background: transparent; border: none; pointer-events: none; }
+  /* F 달력 막대(v10.26): 위 둘 = 공부(빨강) · 아래 = 케틀벨(초록) · 안 한 항목은 회색 */
+  .cal-cell.bars { flex-direction: column; gap: 3px; }
+  .cal-num { font-size: 10px; line-height: 12px; }
+  .cal-bars { display: flex; flex-direction: column; gap: 2px; width: 70%; }
+  .cal-bars i { display: block; height: 4px; border-radius: 2px; background: #E6E4DC; }
+  .cal-bars i.study.on { background: #D32F2F; }
+  .cal-bars i.move.on { background: #2E7D32; }
   .record-bar {
     margin-top: 14px;
     text-align: center;
@@ -526,8 +533,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.25';
-  const APP_VERSION = 'v10.25';
+  const CONFIG_VERSION = 'v10.26';
+  const APP_VERSION = 'v10.26';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -896,11 +903,32 @@
     return currentView === 'study' ? studyRatioFromKey(k) : ratioFromKey(k);
   }
 
+  // F 달력 막대는 항목 의미가 지금과 같은 날만(v10.8 리네임 전 1번 칸 = 수면의식) — 그 전·legacy 는 옛 농도
+  const HABIT_BAR_FROM = '2026-08-11';
+  const HABIT_BAR_CLASS = ['study', 'study', 'move'];
+  function habitBarChecks(k){
+    if(currentView === 'study' || k < HABIT_BAR_FROM || k > dateKey(new Date())) return null;
+    const day = getKey('day:' + k);
+    return (day && day.checks) || [];
+  }
+  function paintCell(cell, k){
+    const checks = habitBarChecks(k);
+    if(!checks){
+      if(cell.classList.contains('bars')){ cell.classList.remove('bars'); cell.textContent = String(Number(k.slice(8))); }
+      applyCellStyle(cell, calRatioFromKey(k));
+      return;
+    }
+    cell.classList.add('bars');
+    cell.innerHTML = '<span class="cal-num">' + Number(k.slice(8)) + '</span><span class="cal-bars">' +
+      HABIT_BAR_CLASS.map((c, i) => '<i class="' + c + (checks[i] ? ' on' : '') + '"></i>').join('') + '</span>';
+    applyCellStyle(cell, 0);
+  }
+
   function paintCalCell(d){
     const k = dateKey(d);
     const cell = document.querySelector('[data-cal-key="' + k + '"]');
     if(!cell) return;
-    applyCellStyle(cell, calRatioFromKey(k));
+    paintCell(cell, k);
   }
 
   // 달력 첫날 = F 는 앱 시작일 · S 는 첫 공부 기록일(그 전은 비활성 — 표시만, 누적 무관)
@@ -969,7 +997,7 @@
       }
 
       grid.appendChild(cell);
-      applyCellStyle(cell, calRatioFromKey(k));
+      paintCell(cell, k);
     }
   }
 
