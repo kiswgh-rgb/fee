@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.26</title>
+<title>Fee v10.27</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -533,8 +533,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.26';
-  const APP_VERSION = 'v10.26';
+  const CONFIG_VERSION = 'v10.27';
+  const APP_VERSION = 'v10.27';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1628,6 +1628,24 @@
   // ===== 하단 바 / 설정 wiring =====
   $('nav-habit').addEventListener('click', () => showView('habit'));
   $('nav-study').addEventListener('click', () => showView('study'));
+
+  // 좌우 스와이프 = 탭 이동(왼쪽으로 밀면 F · 오른쪽이면 S) — 캡처 단계에서 가로채 달력 칸 탭(날짜 선택)으로 새지 않게 한다
+  const SWIPE_MIN = 60;
+  let swX = null, swY = 0;
+  $('app').addEventListener('touchstart', (e) => {
+    if(e.touches.length !== 1){ swX = null; return; }
+    swX = e.touches[0].clientX; swY = e.touches[0].clientY;
+  }, { passive: true, capture: true });
+  $('app').addEventListener('touchend', (e) => {
+    if(swX === null || !e.changedTouches[0]) return;
+    const dx = e.changedTouches[0].clientX - swX;
+    const dy = e.changedTouches[0].clientY - swY;
+    swX = null;
+    if(Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    e.stopPropagation(); e.preventDefault();
+    const next = dx < 0 ? 'habit' : 'study';
+    if(next !== currentView){ showView(next); haptic(); }
+  }, { passive: false, capture: true });
   $('nav-sync').addEventListener('click', () => {
     const cfg = getSyncConfig();
     if(!cfg.pat || !cfg.owner){ toast('먼저 설정에서 토큰을 입력하세요', 'err'); openSettings(); return; }
