@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#F4F2ED">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.35</title>
+<title>Fee v10.36</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -24,6 +24,7 @@
     --accent-bg: #E4E9F1;
     --warn: #A23B2E;
     --amber: #B07A1E;
+    --mark: #3B5FA0;
     --radius-md: 8px;
     --radius-lg: 12px;
     --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", "Noto Sans KR", "Helvetica Neue", sans-serif;
@@ -52,13 +53,22 @@
   }
   /* 가로 끌기는 앱이 받는다(스와이프 탭 이동) · 세로 스크롤만 브라우저에 */
   #app { touch-action: pan-y; }
+  /* 머리 = 큰 날짜 숫자(v10.36 · 캔버스 C) — 지난날이면 숫자·부제가 --mark 로 바뀌어 오늘과 갈린다 */
   .header {
-    position: relative;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 0 0 4px;
     margin-bottom: 20px;
   }
-  .date-label { font-size: 16px; font-weight: 500; color: var(--text-primary); }
-  .date-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .date-num { font-size: 44px; font-weight: 800; line-height: 1; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .date-text { flex: 1; min-width: 0; }
+  .date-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .date-sub { font-size: 12px; font-weight: 500; color: var(--text-tertiary); }
+  .date-dday { font-size: 12px; color: var(--text-tertiary); padding-right: 4px; white-space: nowrap; }
+  .header.past .date-num, .header.past .date-sub { color: var(--mark); }
+  .header.past .date-sub { font-weight: 600; }
+  .day-tag.past { color: var(--mark); font-weight: 700; }
   .check-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -163,7 +173,8 @@
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 4px;
   }
-  .cal-weekdays { margin-bottom: 4px; }
+  .cal-weekdays { margin-bottom: 8px; }
+  .cal-grid { row-gap: 10px; }
   .cal-weekday {
     text-align: center;
     font-size: 11px;
@@ -173,6 +184,7 @@
   .cal-weekday.sun { color: #E4572E; }
   .cal-weekday.sat { color: #111111; }
   .cal-cell {
+    position: relative;
     aspect-ratio: 1;
     min-height: 32px;
     display: flex;
@@ -190,10 +202,15 @@
     cursor: pointer;
   }
   .cal-cell.disabled { opacity: 0.35; pointer-events: none; }
-  .cal-cell.selected { outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
-  /* 오늘 = 칸 바깥 굵은 테두리(진한 칸에서도 보이게) · 선택까지 겹치면 파랑 */
-  .cal-cell.today { outline: 2px solid var(--text-primary); outline-offset: 1px; font-weight: 800; }
-  .cal-cell.today.selected { outline-color: var(--accent); }
+  /* 고른 날 = 파란 테두리 + 「고른 날」 꼬리표 · 오늘 = 숫자 대신 「오늘」 — 농도가 검정까지 가서 테두리만으론 묻혔다 */
+  .cal-cell.selected { outline: 2.5px solid var(--mark); outline-offset: 1px; font-weight: 800; }
+  .cal-cell.today { outline: 1.5px solid var(--text-primary); outline-offset: 1px; font-weight: 800; font-size: 11px; }
+  .cal-cell.today.selected { outline: 2.5px solid var(--mark); }
+  .cal-pin {
+    position: absolute; left: 50%; top: -12px; transform: translateX(-50%);
+    white-space: nowrap; font-size: 9px; font-weight: 700; line-height: 14px;
+    padding: 0 5px; border-radius: 7px; color: #FFFFFF; background: var(--mark); pointer-events: none;
+  }
   .cal-cell.blank { background: transparent; border: none; pointer-events: none; }
   /* F 달력 막대(v10.26): 위 둘 = 공부(빨강) · 아래 = 케틀벨(초록) · 안 한 항목은 회색 */
   .cal-cell.bars { flex-direction: column; gap: 3px; }
@@ -352,6 +369,8 @@
   .study-step:not(:disabled):active { background: var(--bg-tertiary); }
   .study-summary { text-align: center; font-size: 12px; letter-spacing: -0.2px; color: var(--text-secondary); margin-bottom: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .study-summary span { color: var(--accent); font-weight: 600; }
+  .study-summary b.day-tag { font-weight: 400; color: inherit; }
+  .study-summary b.day-tag.past { color: var(--mark); font-weight: 700; }
   .study-summary #study-goal1, .study-summary #study-goal2 { color: var(--text-tertiary); font-weight: 400; } /* 회색 = 끝 목표(계기판 밑 줄과 같은 표기) */
   #view-study .calendar { margin-bottom: 12px; }
   /* v10.35 색 = 먹·남색 · 공부 달력 판만 모노·코랄(캔버스 1+5) — 변수를 이 판 안에서만 덮어쓴다 */
@@ -431,30 +450,37 @@
   .set-adv-btns .modal-btn { flex: 1; }
   /* F 달력 = 띠 3줄(v10.33 · 캔버스 띠-다): 한 달을 항목별 띠로 · 보기 전용 — 날짜 고르기는 머리 ‹ › */
   .day-nav {
-    position: absolute; top: 50%; transform: translateY(-50%);
-    width: 44px; height: 44px; padding: 0; border: none; border-radius: 8px;
+    flex: none;
+    width: 40px; height: 44px; padding: 0; border: none; border-radius: 8px;
     background: transparent; color: var(--text-secondary); font-size: 20px; font-family: inherit;
     cursor: pointer; touch-action: manipulation;
   }
   .day-nav:disabled { opacity: 0.3; cursor: default; }
   .day-nav:not(:disabled):active { background: var(--bg-secondary); }
-  #day-prev { left: calc(50% - 104px); }
-  #day-next { right: calc(50% - 104px); }
+  /* 띠 높이 v10.36 = 막대 34px(+20% · 폰 화면 아래가 비어서) · 위 22px = 고른 날 꼬리표 자리 */
   .cal-ribbon { display: flex; gap: 8px; }
-  .rb-labels { display: flex; flex-direction: column; gap: 4px; padding-top: 4px; }
-  .rb-labels span { height: 28px; width: 26px; display: flex; align-items: center; font-size: 11px; font-weight: 500; color: var(--text-secondary); }
-  .rb-grid { flex: 1; min-width: 0; display: grid; column-gap: 2px; }
-  .rb-col { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 2px; border-radius: 5px; min-width: 0; }
-  .rb-col i { display: block; height: 28px; border-radius: 2px; background: #E0DCD3; }
+  .rb-labels { display: flex; flex-direction: column; gap: 5px; padding-top: 26px; }
+  .rb-labels span { height: 34px; width: 26px; display: flex; align-items: center; font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+  .rb-grid { flex: 1; min-width: 0; display: grid; column-gap: 2px; padding-top: 22px; }
+  .rb-col { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 4px 0 2px; border-radius: 5px; min-width: 0; }
+  .rb-col i { display: block; height: 34px; border-radius: 2px; background: #E0DCD3; }
   .rb-col i.study.on { background: #B4473A; }
   .rb-col i.move.on { background: #4F7A4A; }
   .rb-col i.rb-off { background: transparent; box-shadow: inset 0 0 0 1px #E0DCD3; }
-  .rb-col.sel { background: #D9E0EB; box-shadow: 0 0 0 2px #D9E0EB; }
+  .rb-col.sel { box-shadow: 0 0 0 2px var(--mark); }
   .rb-col.today { outline: 1.5px solid var(--text-primary); outline-offset: 1px; }
-  .rb-num { height: 12px; text-align: center; font-size: 9px; line-height: 12px; white-space: nowrap; overflow: visible; font-weight: 500; color: var(--text-secondary); }
+  .rb-col.today.sel { outline: none; }
+  .rb-pin {
+    position: absolute; left: 50%; top: -21px; transform: translateX(-50%);
+    white-space: nowrap; font-size: 10px; font-weight: 700; line-height: 16px;
+    padding: 0 5px; border-radius: 7px; color: #FFFFFF; background: var(--mark); pointer-events: none;
+  }
+  .rb-pin.l { left: 0; transform: none; }
+  .rb-pin.r { left: auto; right: 0; transform: none; }
+  .rb-num { height: 12px; display: flex; justify-content: center; font-size: 9px; line-height: 12px; white-space: nowrap; font-weight: 500; color: var(--text-secondary); }
   .rb-num.red { color: #B4473A; }
   .rb-col.dim .rb-num { color: #C4BFB4; }
-  .rb-col.sel .rb-num, .rb-col.today .rb-num { font-weight: 700; }
+  .rb-col.today .rb-num { font-weight: 800; color: var(--text-primary); }
   .hidden { display: none; }
 </style>
 </head>
@@ -462,24 +488,28 @@
 <div class="container">
   <div id="loading" class="loading">불러오는 중...</div>
   <div id="app" class="hidden">
-    <div class="header">
+    <div id="app-header" class="header">
+      <div id="date-num" class="date-num">—</div>
+      <div class="date-text">
+        <div id="date-label" class="date-label">—</div>
+        <div id="date-sub" class="date-sub">—</div>
+      </div>
+      <div id="date-dday" class="date-dday"></div>
       <button id="day-prev" type="button" class="day-nav" aria-label="전날">‹</button>
-      <div id="date-label" class="date-label">—</div>
-      <div id="date-sub" class="date-sub">—</div>
       <button id="day-next" type="button" class="day-nav" aria-label="다음 날">›</button>
     </div>
 
     <div id="view-habit">
       <div id="check-grid" class="check-grid"></div>
       <div class="summary">
-        <div>오늘 <span id="today-liter">0.00</span>L</div>
+        <div><span id="today-tag" class="day-tag">오늘</span> <span id="today-liter">0.00</span>L</div>
         <div>누적 <strong class="total-val"><span id="bucket-current">0.00</span></strong> / <span id="bucket-goal">365</span>L<span id="bucket-num" class="bucket-num"></span></div>
       </div>
     </div>
 
     <div id="view-study" class="hidden">
       <div id="study-cards" class="study-cards"></div>
-      <div class="study-summary">오늘 <span id="study-today">0.0</span>h · 누적 <span id="study-total">0</span> / 1차 <span id="study-goal1">0</span> · 최종 <span id="study-goal2">0</span>h</div>
+      <div class="study-summary"><b id="study-today-tag" class="day-tag">오늘</b> <span id="study-today">0.0</span>h · 누적 <span id="study-total">0</span> / 1차 <span id="study-goal1">0</span> · 최종 <span id="study-goal2">0</span>h</div>
       <div id="study-gauge" class="study-gauge empty"></div>
     </div>
 
@@ -583,8 +613,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.35';
-  const APP_VERSION = 'v10.35';
+  const CONFIG_VERSION = 'v10.36';
+  const APP_VERSION = 'v10.36';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -815,12 +845,23 @@
     const tk = dateKey(new Date()), vk = dateKey(viewDate);
     $('day-prev').disabled = vk <= dateKey(START_DATE);
     $('day-next').disabled = vk >= tk;
-    $('date-label').textContent = `${viewDate.getFullYear()}.${pad(viewDate.getMonth()+1)}.${pad(viewDate.getDate())}`;
-    let sub = isToday(viewDate) ? `오늘 · ${weekdayKo(viewDate)}요일` : `${weekdayKo(viewDate)}요일`;
+    renderHeadDate();
     if(isLegacyDate(viewDate) && getKey('legacy:' + dateKey(viewDate))){
-      sub += ' · 이월 기록';
+      $('date-sub').textContent += ' · 이월 기록';
     }
-    $('date-sub').textContent = sub;
+  }
+
+  // S·F 공용 머리 — 큰 숫자 + 「오늘」/「N일 전」 · 요약 줄의 「오늘」 자리도 지난날이면 날짜로
+  function renderHeadDate(){
+    const t = new Date(); t.setHours(0,0,0,0);
+    const ago = Math.round((t.getTime() - viewDate.getTime()) / 86400000);
+    const past = ago > 0;
+    $('app-header').classList.toggle('past', past);
+    $('date-num').textContent = String(viewDate.getDate());
+    $('date-label').textContent = `${viewDate.getMonth()+1}월 ${weekdayKo(viewDate)}요일`;
+    $('date-sub').textContent = past ? `오늘(${t.getDate()}일)보다 ${ago}일 전` : '오늘';
+    const tag = past ? `${viewDate.getDate()}일` : '오늘';
+    ['today-tag', 'study-today-tag'].forEach(id => { $(id).textContent = tag; $(id).classList.toggle('past', past); });
   }
 
   function buildCell(idx){
@@ -996,15 +1037,17 @@
     applyCellStyle(cell, 0);
   }
 
-  const RIBBON_LABELS = ['아침', '저녁', 'KB'];
+  const RIBBON_LABELS = ['아침', '저녁', '케틀'];
   function renderRibbon(){
     const y = calMonth.getFullYear(), m = calMonth.getMonth();
     const n = new Date(y, m + 1, 0).getDate();
     const todayK = dateKey(new Date()), selK = dateKey(viewDate), startK = dateKey(START_DATE);
-    // 날짜 숫자는 한 칸이 좁아 이웃끼리 겹친다 — 고른 날·오늘 먼저, 1·5의 배수·말일은 그 옆자리가 비어 있을 때만
-    const shown = new Set();
-    const tryShow = (dd) => { if(dd >= 1 && dd <= n && !shown.has(dd - 1) && !shown.has(dd + 1)) shown.add(dd); };
-    [viewDate, new Date()].forEach(x => { if(x.getFullYear() === y && x.getMonth() === m) shown.add(x.getDate()); });
+    // 날짜 숫자는 한 칸이 좁아 이웃끼리 겹친다 — 오늘(「오늘」)·고른 날(위 꼬리표)의 양옆은 비우고, 1·5의 배수·말일은 그 옆자리가 비어 있을 때만
+    const shown = new Set(), busy = new Set();
+    const inMonth = (x) => x.getFullYear() === y && x.getMonth() === m;
+    if(inMonth(new Date())){ const td = new Date().getDate(); shown.add(td); busy.add(td); }
+    if(inMonth(viewDate)) busy.add(viewDate.getDate());
+    const tryShow = (dd) => { if(dd >= 1 && dd <= n && !busy.has(dd) && !busy.has(dd - 1) && !busy.has(dd + 1) && !shown.has(dd - 1) && !shown.has(dd + 1)) shown.add(dd); };
     [1, 5, 10, 15, 20, 25, 30, n].forEach(tryShow);
     let cols = '';
     for(let day = 1; day <= n; day++){
@@ -1019,8 +1062,10 @@
       }
       const show = shown.has(day);
       const red = d.getDay() === 0 || isHoliday(d);
-      cols += '<div class="rb-col' + (k === selK ? ' sel' : '') + (k === todayK ? ' today' : '') + (dim ? ' dim' : '') + '">' + cells +
-        '<span class="rb-num' + (red ? ' red' : '') + '">' + (show ? day : '') + '</span></div>';
+      const pin = (k === selK && k !== todayK)
+        ? '<span class="rb-pin' + (day <= 2 ? ' l' : day >= n - 1 ? ' r' : '') + '">' + day + ' ' + weekdayKo(d) + '</span>' : '';
+      cols += '<div class="rb-col' + (k === selK ? ' sel' : '') + (k === todayK ? ' today' : '') + (dim ? ' dim' : '') + '">' + pin + cells +
+        '<span class="rb-num' + (red ? ' red' : '') + '">' + (show ? (k === todayK ? '오늘' : day) : '') + '</span></div>';
     }
     $('cal-ribbon').innerHTML = '<div class="rb-labels">' + RIBBON_LABELS.map(l => '<span>' + l + '</span>').join('') + '</div>' +
       '<div class="rb-grid" style="grid-template-columns: repeat(' + n + ', minmax(0, 1fr))">' + cols + '</div>';
@@ -1089,7 +1134,8 @@
       cell.dataset.calKey = k;
       cell.dataset.wd = String(d.getDay());
       if(isHoliday(d)) cell.dataset.hol = '1';
-      cell.textContent = String(day);
+      cell.textContent = isTod ? '오늘' : String(day);
+      if(isSel && !isTod) cell.insertAdjacentHTML('afterbegin', '<span class="cal-pin">고른 날</span>');
 
       if(!before && !future){
         let cTouched = false;
@@ -1354,13 +1400,13 @@
     const today = new Date(); today.setHours(0,0,0,0);
     const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
     const label = ex.name || '시험';
-    if(diff > 0) return label + '까지  D-' + diff;
-    if(diff === 0) return label + '  D-DAY';
-    return label + '  D+' + (-diff);
+    if(diff > 0) return label + ' D-' + diff;
+    if(diff === 0) return label + ' D-DAY';
+    return label + ' D+' + (-diff);
   }
   function renderStudyDate(){
-    $('date-label').textContent = `${viewDate.getFullYear()}.${pad(viewDate.getMonth()+1)}.${pad(viewDate.getDate())}`;
-    $('date-sub').textContent = ddayString();
+    renderHeadDate();
+    $('date-dday').textContent = ddayString();
   }
 
   function updateStudySummary(){
@@ -1561,6 +1607,7 @@
     $('view-study').classList.toggle('hidden', habit);
     $('day-prev').classList.toggle('hidden', !habit);
     $('day-next').classList.toggle('hidden', !habit);
+    $('date-dday').classList.toggle('hidden', habit);
     // 공용 달력 위치: F = 맨 아래 / S = 계기판 위(요약 줄 아래)
     if(habit) $('app').appendChild($('calendar'));
     else $('view-study').insertBefore($('calendar'), $('study-gauge'));
