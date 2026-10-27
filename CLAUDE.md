@@ -284,3 +284,9 @@ S 뷰에서 `오늘/누적` 줄 아래·달력 위에 **반원 게이지**(`#stu
 # v10.37 — 속도계 구간 = 원장 파생(3단계 끝 12-31)
 
 - `DEFAULT_CONFIG` 1차 `milestones` 는 `inner_data/CHI_Data/semu_cascade.py --재생성` 이 `plans/semu_master.json` 에서 다시 쓴다(손편집 ❌) · `milestones_rev` 가 다르면 `loadConfig()` 가 폰 설정의 `milestones` 를 덮어쓴다(원장 파생값이라 · 다른 칸은 비파괴).
+
+# v10.38 — 계기판 밑 유념 포스트잇
+
+- S 뷰 계기판 밑 `#study-memo`(`renderStudyMemo()`) = 손글씨(나눔손글씨 펜) 크림색 줄 종이 포스트잇 2열 · 제목(기한) 크게 + 형광펜 밑줄 · 사용자 2026-10-27 캔버스 D안 확정.
+- 문구는 공개 레포라 코드에 박지 않는다 — 켤 때 PAT 가 있으면 `CHI_fee_data/semu_memo.json`(`MEMO_PATH`)을 `ghGetFile` 로 받아 localStorage `memo` 에 둔다(실패는 조용히 · 다음 켤 때까지 옛 문구). 정본 = `inner_data` execution.json `유념` · 파생 대조 = `semu_cascade` 이음매 「유념」.
+- `from`/`to` 밖의 쪽지는 안 뜬다 · 쪽지 0장이면 칸 자체를 숨긴다 · 표시만, 저장 데이터 무변경.

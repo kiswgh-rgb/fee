@@ -9,7 +9,8 @@
 <meta name="theme-color" content="#F4F2ED">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
-<title>Fee v10.37</title>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+<title>Fee v10.38</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -397,6 +398,14 @@
   .study-gauge .sg-line { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-top: 4px; }
   .study-gauge .sg-line b { color: var(--text-primary); font-weight: 700; }
   .study-gauge .sg-line .sg-fin { font-size: 10.5px; color: var(--text-tertiary); margin-left: 3px; }
+  /* 계기판 밑 유념 포스트잇(v10.38) — 문구 정본 = CHI_fee_data semu_memo.json(HQ 가 쓴다 · 앱은 읽기만) */
+  .study-memo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 2px 4px 0; margin-bottom: 16px; font-family: 'Nanum Pen Script', cursive; }
+  .study-memo.empty { display: none; }
+  .study-memo .sm-note { background-color: #F6F2E7; background-image: repeating-linear-gradient(to bottom, transparent 0px, transparent 27px, #E6DFCC 27px, #E6DFCC 28px); padding: 10px 12px 14px; box-shadow: 0 2px 4px rgba(35,35,30,0.12); display: flex; flex-direction: column; min-height: 130px; transform: rotate(-1.2deg); }
+  .study-memo .sm-note:nth-child(even) { transform: rotate(1deg); }
+  .study-memo .sm-title { align-self: flex-start; font-size: 27px; line-height: 34px; color: #5A4A2C; background-image: linear-gradient(to bottom, transparent 58%, #EADBB0 58%, #EADBB0 92%, transparent 92%); }
+  .study-memo .sm-sub { font-size: 16px; line-height: 22px; color: #6B5F48; }
+  .study-memo .sm-body { font-size: 21px; line-height: 28px; color: #4A4740; margin-top: 8px; white-space: pre-line; }
   /* 하단 = 떠 있는 동기화 알약 하나(v10.29 · S/F 탭은 스와이프로) · 설정은 오른쪽 아래 구석 작은 점(알약과 같은 줄) */
   .navbar {
     position: fixed; left: 0; right: 0; z-index: 90;
@@ -511,6 +520,7 @@
       <div id="study-cards" class="study-cards"></div>
       <div class="study-summary"><b id="study-today-tag" class="day-tag">오늘</b> <span id="study-today">0.0</span>h · 누적 <span id="study-total">0</span> / 1차 <span id="study-goal1">0</span> · 최종 <span id="study-goal2">0</span>h</div>
       <div id="study-gauge" class="study-gauge empty"></div>
+      <div id="study-memo" class="study-memo empty"></div>
     </div>
 
     <div id="calendar" class="calendar">
@@ -613,8 +623,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.37';
-  const APP_VERSION = 'v10.37';
+  const CONFIG_VERSION = 'v10.38';
+  const APP_VERSION = 'v10.38';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1418,6 +1428,35 @@
     $('study-goal1').textContent = fmtTotal(STUDY_GOALS.first);
     $('study-goal2').textContent = fmtTotal(STUDY_GOALS.final);
     renderStudyGauge();
+    renderStudyMemo();
+  }
+
+  // ===== 유념 포스트잇 =====
+  // 문구는 비공개 CHI_fee_data 의 MEMO_PATH(HQ 가 쓴다) — 공개 레포라 코드에 박지 않는다 · 켤 때 PAT 가 있으면 받아 localStorage 'memo' 에 둔다 · 실패는 조용히
+  const MEMO_PATH = 'semu_memo.json';
+  function renderStudyMemo(){
+    const host = $('study-memo');
+    const memo = getKey('memo');
+    const tk = dateKey(new Date());
+    const notes = ((memo && memo.notes) || []).filter(n => (!n.from || n.from <= tk) && (!n.to || tk <= n.to));
+    host.innerHTML = '';
+    notes.forEach(n => {
+      const d = document.createElement('div'); d.className = 'sm-note';
+      [['sm-title', n.title], ['sm-sub', n.sub], ['sm-body', n.body]].forEach(([c, t]) => {
+        if(!t) return;
+        const e = document.createElement('span'); e.className = c; e.textContent = t; d.appendChild(e);
+      });
+      host.appendChild(d);
+    });
+    host.className = notes.length ? 'study-memo' : 'study-memo empty';
+  }
+  async function refreshMemo(){
+    const cfg = getSyncConfig();
+    if(!cfg.pat || !cfg.owner) return;
+    try {
+      const m = await ghGetFile(cfg, MEMO_PATH);
+      if(m && Array.isArray(m.notes)){ setKey('memo', m); renderStudyMemo(); }
+    } catch(e){}
   }
 
   // ===== 공부 속도계 =====
@@ -1868,6 +1907,7 @@
     recomputeStudyTotal();
 
     showView('study');
+    refreshMemo();
     $('loading').classList.add('hidden');
     $('app').classList.remove('hidden');
     $('navbar').classList.remove('hidden');
