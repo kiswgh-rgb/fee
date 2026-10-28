@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet">
-<title>Fee v10.39</title>
+<title>Fee v10.40</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -72,11 +72,12 @@
   .day-tag.past { color: var(--mark); font-weight: 700; }
   .check-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     margin-bottom: 16px;
   }
   .cell {
+    grid-column: 1 / -1;
     min-height: 64px;
     padding: 12px 16px;
     border: 0.5px solid var(--border);
@@ -94,6 +95,7 @@
     justify-content: space-between;
     gap: 8px;
   }
+  .cell.half { grid-column: auto; } /* v10.40 점심·저녁 = 한 줄에 반씩 */
   .cell.checked {
     background: var(--accent-bg);
     border-color: transparent;
@@ -220,6 +222,7 @@
   .cal-bars i { display: block; height: 4px; border-radius: 2px; background: #E0DCD3; }
   .cal-bars i.study.on { background: #B4473A; }
   .cal-bars i.move.on { background: #4F7A4A; }
+  .cal-bars i.light.on { background: #D9AE4A; }
   .record-bar {
     margin-top: 14px;
     text-align: center;
@@ -476,6 +479,7 @@
   .rb-col i { display: block; height: 34px; border-radius: 2px; background: #E0DCD3; }
   .rb-col i.study.on { background: #B4473A; }
   .rb-col i.move.on { background: #4F7A4A; }
+  .rb-col i.light.on { background: #D9AE4A; } /* 점심·저녁 = 가벼운 공부라 아침(벽돌)보다 한 단계 약하게 */
   .rb-col i.half { height: 14.5px; }
   .rb-col i.na, .cal-bars i.na { background: transparent; box-shadow: inset 0 0 0 1px #E0DCD3; }
   .rb-col i.rb-off { background: transparent; box-shadow: inset 0 0 0 1px #E0DCD3; }
@@ -626,8 +630,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.39';
-  const APP_VERSION = 'v10.39';
+  const CONFIG_VERSION = 'v10.40';
+  const APP_VERSION = 'v10.40';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -903,7 +907,7 @@
     const checked = currentDay.checks[idx];
     const legacy = isLegacyDate(viewDate);
     const cell = document.createElement('div');
-    cell.className = 'cell' + (checked ? ' checked' : '');
+    cell.className = 'cell' + (HABIT_BAR_CLASS[idx] && HABIT_BAR_CLASS[idx].includes('half') ? ' half' : '') + (checked ? ' checked' : '');
     cell.dataset.idx = idx;
     cell.setAttribute('role', 'button');
     cell.setAttribute('tabindex', '0');
@@ -1052,7 +1056,7 @@
 
   // F 달력 막대는 항목 의미가 지금과 같은 날만(v10.8 리네임 전 1번 칸 = 수면의식) — 그 전·legacy 는 옛 농도
   const HABIT_BAR_FROM = '2026-08-11';
-  const HABIT_BAR_CLASS = ['study', 'study half', 'study half', 'move'];
+  const HABIT_BAR_CLASS = ['study', 'light half', 'light half', 'move'];
   const habitBars = (checks) => HABIT_BAR_CLASS.map((c, i) => '<i class="' + c + (checks[i] === null ? ' na' : checks[i] ? ' on' : '') + '"></i>').join('');
   function habitBarChecks(k){
     if(currentView === 'study' || k < HABIT_BAR_FROM || k > dateKey(new Date())) return null;
