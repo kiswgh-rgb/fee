@@ -4,6 +4,8 @@ pre-commit:
     ps1-bom:
       glob: "*.ps1"
       run: python ../check_ps1_bom.py {staged_files}
+    secret-scan:
+      run: python ../inner_data/check_secrets.py {staged_files}
 commit-msg:
   commands:
     decision:
