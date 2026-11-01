@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet">
-<title>Fee v10.42</title>
+<title>Fee v10.43</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -216,11 +216,6 @@
     padding: 0 5px; border-radius: 7px; color: #FFFFFF; background: var(--mark); pointer-events: none;
   }
   .cal-cell.blank { background: transparent; border: none; pointer-events: none; }
-  /* v10.42 공부 달력 범례 — 미달 = 회색 3단 · 달성 = 남색 2단(평일 공휴일 빼면 달성은 이 두 단에 닿는다) */
-  .cal-legend { display: flex; justify-content: center; align-items: center; gap: 18px; margin-top: 14px; font-size: 11px; color: var(--text-primary); }
-  .cal-legend div { display: flex; align-items: center; gap: 3px; }
-  .cal-legend span { margin-right: 4px; }
-  .cal-legend i { display: block; width: 16px; height: 16px; border-radius: 3px; }
   /* F 달력 막대(v10.26): 위 둘 = 공부(빨강) · 아래 = 케틀벨(초록) · 안 한 항목은 회색 */
   .cal-cell.bars { flex-direction: column; gap: 3px; }
   .cal-num { font-size: 10px; line-height: 12px; }
@@ -546,10 +541,6 @@
       <div id="cal-weekdays" class="cal-weekdays"></div>
       <div id="cal-grid" class="cal-grid"></div>
       <div id="cal-ribbon" class="cal-ribbon hidden"></div>
-      <div id="cal-legend" class="cal-legend hidden">
-        <div><span>미달</span><i style="background:#E4E4E1"></i><i style="background:#B4B4B0"></i><i style="background:#6B6B67"></i></div>
-        <div><span>달성</span><i style="background:#4F6A96"></i><i style="background:#1B2A44"></i></div>
-      </div>
     </div>
   </div>
 
@@ -641,8 +632,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.42';
-  const APP_VERSION = 'v10.42';
+  const CONFIG_VERSION = 'v10.43';
+  const APP_VERSION = 'v10.43';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1157,7 +1148,6 @@
     $('cal-weekdays').classList.toggle('hidden', habit);
     $('cal-grid').classList.toggle('hidden', habit);
     $('cal-ribbon').classList.toggle('hidden', !habit);
-    $('cal-legend').classList.toggle('hidden', habit);
     if(habit){ renderRibbon(); return; }
 
     const wd = $('cal-weekdays');
