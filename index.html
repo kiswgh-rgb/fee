@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet">
-<title>Fee v10.43</title>
+<title>Fee v10.44</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -632,8 +632,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.43';
-  const APP_VERSION = 'v10.43';
+  const CONFIG_VERSION = 'v10.44';
+  const APP_VERSION = 'v10.44';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -970,11 +970,12 @@
       // 카운트 표시 갱신
       const cntEl = cell.querySelector('.cell-count');
       if(cntEl) cntEl.textContent = itemCounts[idx] + 'D';
+      // 띠는 저장값을 읽어 칠한다 — 저장이 먼저
+      saveDay(viewDate, currentDay);
+      setKey('total_liter', totalLiter);
       updateSummary();
       paintCalCell(viewDate);
       haptic();
-      saveDay(viewDate, currentDay);
-      setKey('total_liter', totalLiter);
       paintTickets(cell);
     }
 
