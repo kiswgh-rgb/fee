@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet">
-<title>Fee v10.45</title>
+<title>Fee v10.46</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -632,8 +632,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.45';
-  const APP_VERSION = 'v10.45';
+  const CONFIG_VERSION = 'v10.46';
+  const APP_VERSION = 'v10.46';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -1370,9 +1370,9 @@
   let studyConfig = null;
   let studyDay = { hours: {}, density: null };
   let studyTotal = 0;
-  // 누계 표시용(HQ semu_master time_structure) — 앱 이전 기누적 · 1차(2027)·최종(2028 2차) 목표 누계(사용자 2026-10-20)
+  // 누계 표시용(HQ semu_master time_structure) — 앱 이전 기누적 · 1차(2027) 목표 누계(사용자 2026-10-20) · 최종 = 풀직병 합격 수기 바닥선 6000h(2030 2차까지 · 사용자 2026-11-11)
   const STUDY_PRIOR_HOURS = 1100;
-  const STUDY_GOALS = { first: 2100, final: 4100 };
+  const STUDY_GOALS = { first: 2100, final: 6000 };
 
   function loadStudyConfig(){
     let c = getKey('study_config');
@@ -1432,7 +1432,7 @@
     '2027-01-01','2027-02-06','2027-02-07','2027-02-08','2027-02-09','2027-03-01','2027-05-01','2027-05-03','2027-05-05','2027-05-13',
     '2027-06-06','2027-07-17','2027-07-19','2027-08-15','2027-08-16','2027-09-14','2027-09-15','2027-09-16','2027-10-03','2027-10-04','2027-10-09','2027-10-11','2027-12-25','2027-12-27'
   ]);
-  // 쉬는 날 규칙(사용자 2026-10-19 · HQ 4100h 경로와 같은 셈): 평일 공휴일·설 이틀(전날·당일)·추석 평일 = 쉼(0h) · 그 밖의 설 연휴일 = 주말처럼
+  // 쉬는 날 규칙(사용자 2026-10-19 · HQ semu_master 공부일 규칙과 같은 셈): 평일 공휴일·설 이틀(전날·당일)·추석 평일 = 쉼(0h) · 그 밖의 설 연휴일 = 주말처럼
   const SEOL_REST  = new Set(['2026-02-16','2026-02-17','2027-02-06','2027-02-07']);
   const SEOL_STUDY = new Set(['2026-02-18','2027-02-08']);
   const isHoliday = d => KR_HOLIDAYS.has(dateKey(d));
