@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet">
-<title>Fee v10.44</title>
+<title>Fee v10.45</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -632,8 +632,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.44';
-  const APP_VERSION = 'v10.44';
+  const CONFIG_VERSION = 'v10.45';
+  const APP_VERSION = 'v10.45';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -930,9 +930,9 @@
     return cell;
   }
 
-  // 케틀벨 휴식권(DECISIONS 2026-10-22): 3일 연속 → 1장 · 쉰 날(쿠폰을 썼든 아니든)은 연속이 끊겨 전부 소멸
+  // 케틀벨 휴식권(DECISIONS 2026-11-11): 2일 연속 → 1장 · 쉰 날(쿠폰을 썼든 아니든)은 연속이 끊겨 전부 소멸
   // 연속 = 보는 날까지 이어진 날수 — 그날 아직 안 했으면 전날까지로 센다(하루가 끝나기 전엔 끊긴 게 아님)
-  const TICKET_ITEM = '케틀벨', TICKET_EVERY = 3, TICKET_SHOW_MAX = 5;
+  const TICKET_ITEM = '케틀벨', TICKET_EVERY = 2, TICKET_SHOW_MAX = 5;
   function ticketsAt(d){
     const i = config.items.findIndex(it => it.name === TICKET_ITEM);
     if(i < 0) return 0;
