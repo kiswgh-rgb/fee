@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet">
-<title>Fee v10.47</title>
+<title>Fee v10.48</title>
 <style>
   :root {
     --bg-primary: #FFFFFF;
@@ -95,6 +95,7 @@
     justify-content: space-between;
     gap: 8px;
   }
+  .cell.rest { background: #EEF3EC; } /* v10.48 휴식권으로 쉰 날 = 연한 초록(안 한 날과 구분) */
   .cell.half { grid-column: auto; } /* v10.40 점심·저녁 = 한 줄에 반씩 */
   .cell.tall { min-height: 136px; } /* v10.41 주말·휴일 아침 = 점심·저녁 줄까지(64×2+간격 8 · 평일과 합계 높이가 같아 날짜를 넘겨도 달력이 안 움직인다) */
   .cell.checked {
@@ -223,6 +224,7 @@
   .cal-bars i { display: block; height: 4px; border-radius: 2px; background: #E0DCD3; }
   .cal-bars i.study.on { background: #B4473A; }
   .cal-bars i.move.on { background: #4F7A4A; }
+  .cal-bars i.move.rest, .rb-col i.move.rest { background: #BDD0B8; } /* v10.48 휴식권으로 쉰 날 = 케틀 막대 연하게 */
   .cal-bars i.light.on { background: #D9AE4A; }
   .record-bar {
     margin-top: 14px;
@@ -633,8 +635,8 @@
   'use strict';
 
   const STORAGE_PREFIX = 'fee_v10_';
-  const CONFIG_VERSION = 'v10.47';
-  const APP_VERSION = 'v10.47';
+  const CONFIG_VERSION = 'v10.48';
+  const APP_VERSION = 'v10.48';
   const START_DATE = new Date(2026, 4, 10);
   START_DATE.setHours(0,0,0,0);
   const EPSILON = 0.001;
@@ -945,11 +947,22 @@
     while(streak < 3660 && done(x)){ streak++; x.setDate(x.getDate() - 1); }
     return Math.floor(streak / TICKET_EVERY);
   }
+  // 휴식권으로 쉰 날 = 지난날 중 케틀벨을 안 했고(null = 그때 안 잼 ❌) 전날까지 휴식권이 1장 이상 있던 날 — 안 한 날과 구분해 연하게 칠한다(사용자 2026-11-15)
+  function ticketRestAt(d){
+    const i = config.items.findIndex(it => it.name === TICKET_ITEM);
+    if(i < 0 || dateKey(d) >= dateKey(new Date())) return false;
+    const day = getKey('day:' + dateKey(d));
+    if(!day || !day.checks || day.checks[i] === null || day.checks[i]) return false;
+    return ticketsAt(d) > 0;
+  }
+  const markRest = (html, k) => ticketRestAt(new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8))) ? html.replace('<i class="move">', '<i class="move rest">') : html;
   function paintTickets(cell){
     const el = cell.querySelector('.cell-tix');
     if(!el) return;
+    const rest = ticketRestAt(viewDate);
+    cell.classList.toggle('rest', rest);
     const n = ticketsAt(viewDate);
-    el.textContent = n <= 0 ? '' : n <= TICKET_SHOW_MAX ? '🏷️'.repeat(n) : '🏷️×' + n;
+    el.textContent = rest ? '🏷️ 휴식권 씀' : n <= 0 ? '' : n <= TICKET_SHOW_MAX ? '🏷️'.repeat(n) : '🏷️×' + n;
   }
 
   function attachTap(cell, idx){
@@ -1098,7 +1111,7 @@
       return;
     }
     cell.classList.add('bars');
-    cell.innerHTML = '<span class="cal-num">' + Number(k.slice(8)) + '</span><span class="cal-bars">' + habitBars(checks) + '</span>';
+    cell.innerHTML = '<span class="cal-num">' + Number(k.slice(8)) + '</span><span class="cal-bars">' + markRest(habitBars(checks), k) + '</span>';
     applyCellStyle(cell, 0);
   }
 
@@ -1123,7 +1136,7 @@
       if(dim) cells = barClass.map(c => '<i class="' + c + ' rb-off"></i>').join('');
       else {
         const checks = habitBarChecks(k);
-        if(checks) cells = allDay ? allDayBars(checks) : fri ? friBars(checks) : habitBars(checks);
+        if(checks) cells = markRest(allDay ? allDayBars(checks) : fri ? friBars(checks) : habitBars(checks), k);
         else { const s = densityStyle(ratioFromKey(k)); cells = barClass.map(c => '<i class="' + c + '"' + (s.bg ? ' style="background:' + s.bg + '"' : '') + '></i>').join(''); }
       }
       const show = shown.has(day);
